@@ -1,0 +1,389 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>ssj-front documentation</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
+	   <link rel="stylesheet" href="./styles/style.css">
+        <link rel="stylesheet" href="./styles/dark.css">
+    </head>
+    <body>
+          <script>
+               // Blocking script to avoid flickering dark mode
+               // Dark mode toggle button
+               var useDark = window.matchMedia('(prefers-color-scheme: dark)');
+               var darkModeState = useDark.matches;
+               var $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               var $darkModeToggles = document.querySelectorAll('.dark-mode-switch');
+               var darkModeStateLocal = localStorage.getItem('compodoc_darkmode-state');
+
+               function checkToggle(check) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].checked = check;
+                    }
+               }
+
+               function toggleDarkMode(state) {
+                    if (window.localStorage) {
+                         localStorage.setItem('compodoc_darkmode-state', state);
+                    }
+
+                    checkToggle(state);
+
+                    const hasClass = document.body.classList.contains('dark');
+
+                    if (state) {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.add('dark');
+                         }
+                         if (!hasClass) {
+                              document.body.classList.add('dark');
+                         }
+                    } else {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.remove('dark');
+                         }
+                         if (hasClass) {
+                              document.body.classList.remove('dark');
+                         }
+                    }
+               }
+
+               useDark.addEventListener('change', function (evt) {
+                    toggleDarkMode(evt.matches);
+               });
+               if (darkModeStateLocal) {
+                    darkModeState = darkModeStateLocal === 'true';
+               }
+               toggleDarkMode(darkModeState);
+          </script>
+          <script>
+              // --- Iframe navigation tracking for Template Playground ---
+              function sendCurrentUrlToParent() {
+                  if (window.parent && window.parent !== window) {
+                      window.parent.postMessage({
+                          type: 'compodoc-iframe-navigate',
+                          url: window.location.pathname + window.location.hash
+                      }, '*');
+                  }
+              }
+              window.addEventListener('hashchange', sendCurrentUrlToParent, false);
+              window.addEventListener('popstate', sendCurrentUrlToParent, false);
+              window.addEventListener('DOMContentLoaded', sendCurrentUrlToParent, false);
+          </script>
+
+        <div class="navbar navbar-default navbar-fixed-top d-md-none p-0">
+               <div class="d-flex">
+                    <a href="./" class="navbar-brand">ssj-front documentation</a>
+                    <button type="button" class="btn btn-default btn-menu ion-ios-menu" id="btn-menu"></button>
+               </div>
+        </div>
+
+        <div class="xs-menu menu" id="mobile-menu">
+                <div id="book-search-input" role="search">
+    <input type="text" placeholder="Type to search">
+    <button type="button"
+        class="search-input-clear"
+        aria-label="Clear search"
+        data-search-input-clear>&times;</button>
+</div>
+            <compodoc-menu></compodoc-menu>
+        </div>
+
+        <div class="container-fluid main">
+           <div class="row main">
+               <div class="d-none d-md-block menu">
+                   <compodoc-menu mode="normal"></compodoc-menu>
+               </div>
+               <!-- START CONTENT -->
+               <div class="content readme">
+                   <div class="content-data">
+
+
+<h1>SSJ Front</h1>
+<p>Frontend de <strong>Gestión Acceso Justicia</strong> para la Alcaldía de Santiago de Cali. Aplicación Angular 21 con diseño Gov.co / MinTIC, orientada a módulos funcionales (comparendos, medidas correctivas, pedagogía).</p>
+<p>Generado con <a href="https://github.com/angular/angular-cli">Angular CLI</a> 21.2.19.</p>
+<h2>Stack tecnológico</h2>
+<table class="table table-bordered compodoc-table">
+<thead>
+<tr><th>Tecnología</th><th>Uso</th></tr>
+</thead>
+<tbody>
+<tr><td>Angular 21</td><td>Framework principal (standalone components)</td></tr>
+<tr><td>Bootstrap 5</td><td>Grid, acordeón, formularios</td></tr>
+<tr><td>RxJS</td><td>Consumo de APIs</td></tr>
+<tr><td>Vitest</td><td>Pruebas unitarias</td></tr>
+<tr><td>Estilos Gov.co</td><td><code>public/assets/css/all.css</code> (MinTIC)</td></tr>
+</tbody>
+</table>
+<h2>Arquitectura</h2>
+<p>La aplicación sigue una <strong>arquitectura por capas</strong> con separación entre shell, dominio y componentes reutilizables.</p>
+<b>Example :</b><div><pre class="line-numbers"><code class="language-mermaid">flowchart TB
+  subgraph shell [Shell de aplicación]
+    App[app-root]
+    Layout[Layout]
+    Header[Header + Barra Gov.co + Logo]
+    Menu[Menú lateral]
+    Footer[Footer]
+    Outlet[router-outlet]
+  end
+
+  subgraph features [Features - lazy loading]
+    Comparendo[ComparendoModule]
+    Descargar[Descargar]
+    Futuro[Otros módulos...]
+  end
+
+  subgraph shared [Shared]
+    Button[Button]
+    Select[Select]
+    InputText[InputText]
+  end
+
+  subgraph core [Core]
+    Services[Services]
+    Interfaces[Interfaces]
+    MenuJson[menu.json]
+  end
+
+  App --&gt; Layout
+  Layout --&gt; Header
+  Layout --&gt; Menu
+  Layout --&gt; Outlet
+  Layout --&gt; Footer
+  Menu --&gt; MenuJson
+  Outlet --&gt; Comparendo
+  Comparendo --&gt; Descargar
+  Descargar --&gt; Button
+  Descargar --&gt; Select
+  Descargar --&gt; InputText
+  Menu --&gt; Services</code></pre></div><h3>Capas</h3>
+<h4><code>src/app/core/</code></h4>
+<p>Infraestructura transversal de la aplicación.</p>
+<ul>
+<li><strong><code>header/</code></strong> — Cabecera institucional (barra Gov.co, logo Alcaldía, mega menú).</li>
+<li><strong><code>footer/</code></strong> — Pie de página Gov.co resumido.</li>
+<li><strong><code>menu/</code></strong> — Menú lateral en acordeón, generado desde <code>menu.json</code>.</li>
+<li><strong><code>services/</code></strong> — Servicios HTTP (<code>TramiteService</code>, etc.).</li>
+<li><strong><code>interfaces/</code></strong> — Tipos TypeScript compartidos.</li>
+</ul>
+<h4><code>src/app/shared/components/</code></h4>
+<p>Componentes UI reutilizables (standalone):</p>
+<ul>
+<li><code>button</code> — Botón con <code>@Input label</code> y <code>@Output clicked</code>.</li>
+<li><code>select</code> — Selector con opciones.</li>
+<li><code>input-text</code> — Campo de texto con label.</li>
+</ul>
+<h4><code>src/app/features/</code></h4>
+<p>Módulos de negocio. Cada feature puede tener:</p>
+<ul>
+<li>Páginas (componentes standalone).</li>
+<li><code>*-module.ts</code> — NgModule para lazy loading.</li>
+<li><code>*-routing-module.ts</code> — Rutas hijas del módulo.</li>
+</ul>
+<p>Módulos previstos en <code>menu.json</code>:</p>
+<table class="table table-bordered compodoc-table">
+<thead>
+<tr><th>Módulo</th><th>Ruta base</th><th>Estado</th></tr>
+</thead>
+<tbody>
+<tr><td>Comparendos Ley 1801</td><td><code>/gestion-acceso-justicia/comparendo</code></td><td>Implementado (descargar)</td></tr>
+<tr><td>Medida Correctiva Multa</td><td><code>/gestion-acceso-justicia/medida-multa</code></td><td>Pendiente</td></tr>
+<tr><td>Medida Correctiva Pedagogía</td><td><code>/gestion-acceso-justicia/pedagogia</code></td><td>Pendiente</td></tr>
+</tbody>
+</table>
+<h4><code>public/assets/</code></h4>
+<p>Archivos estáticos servidos en <code>/assets/</code>:</p>
+<ul>
+<li><code>css/all.css</code> — Estilos Gov.co / MinTIC.</li>
+<li><code>images/</code> — Logos e imágenes institucionales.</li>
+</ul>
+<h4><code>src/environments/</code></h4>
+<p>Configuración por ambiente (<code>TYSA_API_URL</code>, etc.).</p>
+<h2>Enrutamiento</h2>
+<b>Example :</b><div><pre class="line-numbers"><code class="language-none">/  →  Layout (shell)
+      ├── Header
+      ├── Menu (sidebar)
+      ├── router-outlet  ← contenido dinámico
+      └── Footer
+
+/gestion-acceso-justicia/comparendo/descargar  →  Descargar (lazy)
+/gestion-acceso-justicia/comparendo             →  redirect a descargar</code></pre></div><ul>
+<li><strong><code>app.routes.ts</code></strong> — Ruta raíz con <code>Layout</code> y lazy loading de features.</li>
+<li><strong><code>menu.json</code></strong> — Define la estructura del menú lateral y las URLs de navegación.</li>
+<li>El menú construye rutas como: <code>basePath + module.path + child.path</code>.</li>
+</ul>
+<h2>Menú declarativo</h2>
+<p>El archivo <code>src/app/core/menu/menu.json</code> centraliza:</p>
+<ul>
+<li>Label del módulo padre (<code>Gestión Acceso Justicia</code>).</li>
+<li><code>basePath</code> de navegación.</li>
+<li>Módulos hijos con sus páginas (<code>children</code>).</li>
+</ul>
+<p>Al agregar una nueva pantalla:</p>
+<ol>
+<li>Crear el componente en <code>features/&lt;modulo&gt;/</code>.</li>
+<li>Registrar la ruta en <code>*-routing-module.ts</code>.</li>
+<li>Agregar la entrada en <code>menu.json</code>.</li>
+<li>Registrar lazy loading en <code>app.routes.ts</code> (si el módulo es nuevo).</li>
+</ol>
+<h2>Patrón de componentes</h2>
+<ul>
+<li><strong>Standalone</strong> — Layout, header, footer, menu, páginas y shared components.</li>
+<li><strong>NgModule + lazy loading</strong> — Features como <code>ComparendoModule</code> para cargar rutas bajo demanda.</li>
+<li><strong>Híbrido</strong> — Los componentes standalone se referencian directamente en rutas hijas del NgModule.</li>
+</ul>
+<h2>Estilos</h2>
+<table class="table table-bordered compodoc-table">
+<thead>
+<tr><th>Origen</th><th>Alcance</th></tr>
+</thead>
+<tbody>
+<tr><td><code>public/assets/css/all.css</code></td><td>Gov.co global (vía <code>index.html</code>)</td></tr>
+<tr><td><code>bootstrap.min.css</code></td><td>Utilidades y grid (<code>angular.json</code>)</td></tr>
+<tr><td><code>src/styles.css</code></td><td>Overrides globales del proyecto</td></tr>
+<tr><td><code>*.css</code> por componente</td><td>Estilos encapsulados (header, footer, páginas)</td></tr>
+</tbody>
+</table>
+<h2>Estructura de carpetas</h2>
+<b>Example :</b><div><pre class="line-numbers"><code class="language-none">ssj-front/
+├── public/assets/          # Estáticos (/assets/...)
+├── src/
+│   ├── app/
+│   │   ├── core/           # Shell, menú, servicios
+│   │   ├── shared/         # Componentes reutilizables
+│   │   ├── features/       # Módulos de negocio
+│   │   ├── app.routes.ts
+│   │   └── app.config.ts
+│   ├── environments/
+│   └── index.html
+├── angular.json
+└── package.json</code></pre></div><h2>Comandos</h2>
+<h3>Servidor de desarrollo</h3>
+<b>Example :</b><div><pre class="line-numbers"><code class="language-bash">npm start
+# o: ng serve</code></pre></div><p>Abrir <code>http://localhost:4200/</code>.</p>
+<h3>Build</h3>
+<b>Example :</b><div><pre class="line-numbers"><code class="language-bash">npm run build</code></pre></div><p>Artefactos en <code>dist/ssj-front/</code>.</p>
+<h3>Scaffolding</h3>
+<b>Example :</b><div><pre class="line-numbers"><code class="language-bash">ng generate component features/&lt;modulo&gt;/&lt;pagina&gt;</code></pre></div><h3>Tests</h3>
+<b>Example :</b><div><pre class="line-numbers"><code class="language-bash">ng test</code></pre></div><h2>Recursos</h2>
+<ul>
+<li><a href="https://angular.dev/tools/cli">Angular CLI</a></li>
+<li><a href="https://angular.dev">Documentación Angular 21</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                   </div><div class="search-results">
+    <div class="has-results">
+        <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+        <ul class="search-results-list"></ul>
+    </div>
+    <div class="no-results">
+        <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+    </div>
+</div>
+</div>
+               <!-- END CONTENT -->
+           </div>
+       </div>
+
+          <label class="dark-mode-switch">
+               <input type="checkbox">
+               <span class="slider">
+                    <svg class="slider-icon" viewBox="0 0 24 24" fill="none" height="20" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+                    </svg>
+               </span>
+          </label>
+
+       <script>
+            var COMPODOC_CURRENT_PAGE_DEPTH = 0;
+            var COMPODOC_CURRENT_PAGE_CONTEXT = 'readme';
+            var COMPODOC_CURRENT_PAGE_URL = 'index.html';
+            var MAX_SEARCH_RESULTS = 15;
+       </script>
+
+       <script>
+               $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               var updateDarkModeSwitchOffset = function () {
+                    var content = document.querySelector('.content');
+                    var scrollbarWidth = 0;
+
+                    if (content) {
+                         scrollbarWidth = Math.max(0, content.offsetWidth - content.clientWidth);
+                    }
+
+                    document.documentElement.style.setProperty(
+                         '--content-scrollbar-width',
+                         scrollbarWidth + 'px'
+                    );
+               };
+
+               updateDarkModeSwitchOffset();
+               requestAnimationFrame(updateDarkModeSwitchOffset);
+               window.addEventListener('resize', updateDarkModeSwitchOffset);
+
+               checkToggle(darkModeState);
+               if ($darkModeToggleSwitchers.length > 0) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].addEventListener('change', function (event) {
+                              darkModeState = !darkModeState;
+                              toggleDarkMode(darkModeState);
+                         });
+                    }
+               }
+          </script>
+
+       <script src="./js/libs/custom-elements.min.js"></script>
+       <script src="./js/libs/lit-html.js"></script>
+
+       <script src="./js/menu-wc.js" defer></script>
+
+       <script src="./js/libs/bootstrap-native.js"></script>
+
+       <script src="./js/libs/es6-shim.min.js"></script>
+       <script src="./js/libs/EventDispatcher.js"></script>
+       <script src="./js/libs/promise.min.js"></script>
+
+       <script src="./js/compodoc.js"></script>
+
+       <script src="./js/tabs.js"></script>
+       <script src="./js/menu.js"></script>
+       <script src="./js/libs/clipboard.min.js"></script>
+       <script src="./js/libs/prism.js"></script>
+       <script src="./js/sourceCode.js"></script>
+          <script src="./js/search/search.js"></script>
+          <script src="./js/search/lunr.min.js"></script>
+          <script src="./js/search/search-lunr.js"></script>
+          <script src="./js/search/search_index.js"></script>
+       <script src="./js/lazy-load-graphs.js"></script>
+
+
+    </body>
+</html>

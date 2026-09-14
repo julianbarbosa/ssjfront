@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Work+Sans:wght@400;500;600&display=swap');
+
+:host {
+  display: block;
+}
+
+.header-gov {
+  background-color: #36c;
+  padding: 0.2em 1em;
+  color: #fff;
+}
+
+.header-gov .logo-gov {
+  padding: 0 0.5em;
+}
+
+.header-gov .logo-gov a {
+  display: block;
+  max-width: 8em;
+  padding: 0.5em;
+}
+
+.header-gov .logo-gov a img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.header-gov .toolbar-gov-co {
+  padding-top: 0.5em;
+  text-align: center;
+}
+
+.toolbar-header-gov {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+@media (max-width: 575.98px) {
+  .header-gov {
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+  }
+
+  .header-gov .logo-gov a {
+    max-width: 6.5em;
+    padding: 0.35em;
+  }
+}

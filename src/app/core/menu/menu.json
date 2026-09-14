@@ -1,0 +1,93 @@
+{
+    "menu": {
+      "id": "gestion-acceso-justicia",
+      "label": "Gestión Acceso Justicia",
+      "basePath": "/gestion-acceso-justicia",
+      "modules": [
+        {
+          "id": "comparendo",
+          "label": "Comparendos Ley 1801",
+          "path": "comparendo",
+          "loadChildren": "@modules/comparendo/comparendo.module#ComparendoModule",
+          "children": [
+            {
+              "id": "descargar-registrar",
+              "label": "Descargar del RNMC",
+              "path": "descargar",
+              "loadComponent": "@modules/comparendo/pages/registrar/registrar-comparendo.component#RegistrarComparendoComponent"
+            },
+            {
+              "id": "comparendo-consultar",
+              "label": "Consultar",
+              "path": "consultar",
+              "loadComponent": "@modules/comparendo/pages/consultar/consultar-comparendo.component#ConsultarComparendoComponent"
+            }            
+          ]
+        },
+        {
+          "id": "medida-multa",
+          "label": "Medida Correctiva Multa",
+          "path": "medida-multa",
+          "loadChildren": "@modules/medida-multa/medida-multa.module#MedidaMultaModule",
+          "children": [           
+            {
+              "id": "medida-multa-audiencia",
+              "label": "Audiencia",
+              "path": ":comparendoId/audiencia",
+              "loadComponent": "@modules/medida-multa/pages/audiencia/audiencia.component#AudienciaComponent"
+            },
+            {
+              "id": "medida-multa-primera-instancia",
+              "label": "Primera Instancia",
+              "path": ":comparendoId/primera-instancia",
+              "loadComponent": "@modules/medida-multa/pages/primera-instancia/primera-instancia.component#PrimeraInstanciaComponent"
+            },
+            {
+              "id": "medida-multa-segunda-instancia",
+              "label": "Segunda Instancia",
+              "path": ":comparendoId/segunda-instancia",
+              "loadComponent": "@modules/medida-multa/pages/segunda-instancia/segunda-instancia.component#SegundaInstanciaComponent"
+            }
+          ]
+        },
+        {
+          "id": "pedagogia",
+          "label": "Medida Correctiva Pedagogía",
+          "path": "pedagogia",
+          "loadChildren": "@modules/pedagogia/pedagogia.module#PedagogiaModule",
+          "children": [
+            {
+              "id": "pedagogia-tipo",
+              "label": "Tipos de Pedagogía",
+              "path": "tipo",
+              "loadComponent": "@modules/pedagogia/pages/tipo/tipo-pedagogia.component#TipoPedagogiaComponent"
+            },
+            {
+              "id": "pedagogia-crear",
+              "label": "Crear Pedagogía",
+              "path": "crear",
+              "loadComponent": "@modules/pedagogia/pages/crear/crear-pedagogia.component#CrearPedagogiaComponent"
+            },
+            {
+              "id": "pedagogia-listar",
+              "label": "Listar Pedagogía",
+              "path": "listar",
+              "loadComponent": "@modules/pedagogia/pages/crear/crear-pedagogia.component#CrearPedagogiaComponent"
+            },
+            {
+              "id": "pedagogia-programar",
+              "label": "Programar Pedagogía",
+              "path": "programar",
+              "loadComponent": "@modules/pedagogia/pages/programar/programar-pedagogia.component#ProgramarPedagogiaComponent"
+            },
+            {
+              "id": "pedagogia-calendario",
+              "label": "Calendario de Programaciones",
+              "path": "calendario",
+              "loadComponent": "@modules/pedagogia/pages/calendario/calendario-pedagogia.component#CalendarioPedagogiaComponent"
+            }
+          ]
+        }
+      ]
+    }
+  }

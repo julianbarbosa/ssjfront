@@ -1,0 +1,32 @@
+@media ((min-width: 1080px) and (max-width: 1700px)) {
+  .custom-row-padding {
+    padding-left: 1%;
+  }
+
+  .custom-col-md-2 {
+    flex: 0 0 auto;
+    width: 22%;
+  }
+
+  .custom-col-md-10 {
+    flex: 0 0 auto;
+    padding-left: 1%;
+    width: 77%;
+  }
+}
+
+@media (min-width: 1701px) {
+  .custom-row-padding {
+    padding-left: 2%;
+  }
+
+  .custom-col-md-2 {
+    width: 20%;
+  }
+
+  .custom-col-md-10 {
+    flex: 0 0 auto;
+    padding-left: 3%;
+    width: 77%;
+  }
+}

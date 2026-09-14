@@ -1,0 +1,11 @@
+{
+  "/saul3-api": {
+    "target": "http://saul-dev.cali.gov.co:1443",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug",
+    "pathRewrite": {
+      "^/saul3-api": "/saul3/index.php/api"
+    }
+  }
+}

@@ -1,0 +1,83 @@
+:host {
+  display: block;
+  font-family: 'Work Sans', sans-serif;
+  color: #fff;
+}
+
+.footer-govco h3 {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  font-size: 1.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.footer-govco p {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.fondoFooter {
+  background-color: #023773;
+}
+
+.fondoPrincipal {
+  background: #3366cc !important;
+}
+
+.fondoMixto {
+  background: linear-gradient(to right, #023773 0%, #023773 50%, #3366cc 50%, #3366cc 100%);
+}
+
+.footer-logo {
+  max-width: 160px;
+}
+
+.btn-light {
+  font-family: 'Montserrat', sans-serif;
+  background-color: #fff;
+  border-color: #fff;
+  color: #0b457f;
+  font-size: 1rem;
+}
+
+.btn-light:hover,
+.btn-light:focus {
+  color: #fff;
+  background-color: #1da5d7;
+  border-color: #1da5d7;
+}
+
+.sin-subrayado {
+  text-decoration: none !important;
+  color: #fff;
+}
+
+.sin-subrayado:hover {
+  text-decoration: underline !important;
+  color: #fff;
+}
+
+.capitalizar-boton {
+  text-transform: lowercase;
+  font-weight: 600;
+}
+
+.capitalizar-boton::first-letter {
+  text-transform: uppercase;
+}
+
+.social-links,
+.footer-links {
+  font-size: 0.95rem;
+}
+
+@media (max-width: 767.98px) {
+  .fondoMixto {
+    background: #3366cc;
+  }
+
+  .fondoFooter {
+    padding-bottom: 0 !important;
+  }
+}

@@ -1,0 +1,33 @@
+.accordion-button {
+  color: #014782;
+  font-weight: 500;
+}
+
+.paraquecentre {
+  width: 100%;
+  display: table;
+  white-space: normal;
+  word-wrap: break-word !important;
+}
+
+.izquierda {
+  word-wrap: break-word !important;
+  display: table-cell;
+  text-align: left;
+}
+
+.derecha {
+  display: table-cell;
+  text-align: right !important;
+  justify-content: flex-end;
+}
+
+a[role='button'] {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.menu-item-static {
+  color: #6c757d;
+  font-size: 0.95rem;
+}

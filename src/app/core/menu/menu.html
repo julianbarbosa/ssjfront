@@ -1,0 +1,47 @@
+<div class="mb-3">
+  <div class="accordion" id="accordionSideMenu">
+    @for (module of modules; track module.id; let first = $first) {
+      <div class="accordion-item">
+        <h6 class="accordion-header">
+          <button
+            class="accordion-button"
+            [class.collapsed]="!first"
+            type="button"
+            data-bs-toggle="collapse"
+            [attr.data-bs-target]="'#collapse-' + module.id"
+            [attr.aria-expanded]="first"
+            [attr.aria-controls]="'collapse-' + module.id"
+          >
+            {{ module.label }}
+          </button>
+        </h6>
+        <div
+          [id]="'collapse-' + module.id"
+          class="accordion-collapse collapse"
+          [class.show]="first"
+          data-bs-parent="#accordionSideMenu"
+        >
+          <div class="accordion-body">
+            <ul class="list-group list-group-flush">
+              @for (child of module.children; track child.id) {
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <div class="paraquecentre">
+                    <div class="izquierda">
+                      @if (isNavigable(child.path)) {
+                        <a role="button" (click)="navigateTo(module, child)">
+                          {{ child.label }}
+                        </a>
+                      } @else {
+                        <span class="menu-item-static">{{ child.label }}</span>
+                      }
+                    </div>
+                  </div>
+                </li>
+              }
+            </ul>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>
