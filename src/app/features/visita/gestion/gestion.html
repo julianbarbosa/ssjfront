@@ -1,0 +1,156 @@
+<div class="gestion-toolbar">
+  <app-select
+    id="visualizacion"
+    label="Visualización"
+    [options]="visualizaciones"
+    [value]="visualizacionSeleccionada"
+    (valueChange)="onVisualizacionChange($event)"
+  />
+</div>
+
+<ng-template #contenidoMapa>
+  <app-map markerTitle="Ubicación de la visita" />
+</ng-template>
+
+<ng-template #camposCategoria let-campos="campos" let-layout="layout">
+  <div
+    class="gestion-categoria__fields row"
+    [class.gestion-categoria__fields--horizontal]="layout === 'horizontal'"
+  >
+    @for (campo of campos; track campo.id) {
+      <div class="gestion-campo" [ngClass]="campo.clase ?? 'col-12'">
+        @if (esSelect(campo)) {
+          <app-select
+            [id]="'campo-' + campo.id"
+            [label]="labelCampo(campo)"
+            [options]="opcionesSelect(campo)"
+            [value]="valorCampo(campo)"
+            [readOnly]="campo.soloLectura"
+          />
+        } @else if (esInput(campo)) {
+          <app-input
+            [id]="'campo-' + campo.id"
+            [label]="labelCampo(campo)"
+            [value]="valorCampo(campo)"
+            [readOnly]="campo.soloLectura"
+          />
+        }
+      </div>
+    }
+  </div>
+</ng-template>
+
+<ng-template #menuCategorias>
+  <nav class="gestion-sidebar" aria-label="Categorías del formulario">
+    <p class="gestion-sidebar__title">Categorías</p>
+    <ul class="gestion-sidebar__list">
+      <li>
+        <button
+          type="button"
+          class="gestion-sidebar__link"
+          [class.gestion-sidebar__link--active]="categoriaActivaId === categoriaMapaId"
+          (click)="irACategoria(categoriaMapaId)"
+        >
+          {{ categoriaMapaNombre }}
+        </button>
+      </li>
+      @for (categoria of dataForm(); track categoria.id) {
+        <li>
+          <button
+            type="button"
+            class="gestion-sidebar__link"
+            [class.gestion-sidebar__link--active]="categoriaActivaId === categoria.id"
+            (click)="irACategoria(categoria.id)"
+          >
+            {{ categoria.nombre }}
+          </button>
+        </li>
+      }
+    </ul>
+  </nav>
+</ng-template>
+
+@if (idVisita !== null) {
+  <div class="gestion-layout">
+    <ng-container [ngTemplateOutlet]="menuCategorias" />
+
+    <div class="gestion-layout__content">
+      @if (visualizacion === 'normal') {
+        <section class="gestion-page">
+          <section class="gestion-categoria" [id]="idSeccionCategoria(categoriaMapaId)">
+            <h2 class="gestion-categoria__title">{{ categoriaMapaNombre }}</h2>
+            <ng-container [ngTemplateOutlet]="contenidoMapa" />
+          </section>
+
+          @for (categoria of dataForm(); track categoria.id) {
+            <section class="gestion-categoria" [id]="idSeccionCategoria(categoria.id)">
+              <h2 class="gestion-categoria__title">{{ categoria.nombre }}</h2>
+              <ng-container
+                [ngTemplateOutlet]="camposCategoria"
+                [ngTemplateOutletContext]="{ campos: categoria.campos, layout: 'normal' }"
+              />
+            </section>
+          }
+        </section>
+      }
+
+      @if (visualizacion === 'acordion') {
+        <section class="gestion-page gestion-page--acordion">
+          <details class="gestion-accordion__item" [id]="idSeccionCategoria(categoriaMapaId)" open>
+            <summary class="gestion-accordion__summary">{{ categoriaMapaNombre }}</summary>
+            <div class="gestion-accordion__body">
+              <ng-container [ngTemplateOutlet]="contenidoMapa" />
+            </div>
+          </details>
+
+          @for (categoria of dataForm(); track categoria.id) {
+            <details class="gestion-accordion__item" [id]="idSeccionCategoria(categoria.id)">
+              <summary class="gestion-accordion__summary">{{ categoria.nombre }}</summary>
+              <div class="gestion-accordion__body">
+                <ng-container
+                  [ngTemplateOutlet]="camposCategoria"
+                  [ngTemplateOutletContext]="{ campos: categoria.campos, layout: 'normal' }"
+                />
+              </div>
+            </details>
+          }
+        </section>
+      }
+
+      @if (visualizacion === 'horizontal') {
+        <section class="gestion-page">
+          <div class="gestion-horizontal-nav">
+            <app-button
+              label="Anterior"
+              [disabled]="!puedeIrCategoriaAnterior"
+              (clicked)="irCategoriaAnterior()"
+            />
+            <span class="gestion-horizontal-nav__contador">
+              {{ indiceCategoriaHorizontalVisible }} / {{ totalCategoriasHorizontal }}
+            </span>
+            <app-button
+              label="Siguiente"
+              [disabled]="!puedeIrCategoriaSiguiente"
+              (clicked)="irCategoriaSiguiente()"
+            />
+          </div>
+
+          @if (esCategoriaMapaHorizontal) {
+            <section class="gestion-categoria" [id]="idSeccionCategoria(categoriaMapaId)">
+              <h2 class="gestion-categoria__title">{{ categoriaMapaNombre }}</h2>
+              <ng-container [ngTemplateOutlet]="contenidoMapa" />
+            </section>
+          } @else if (categoriaHorizontalActual; as categoria) {
+            <section class="gestion-categoria" [id]="idSeccionCategoria(categoria.id)">
+              <h2 class="gestion-categoria__title">{{ categoria.nombre }}</h2>
+              <ng-container
+                [ngTemplateOutlet]="camposCategoria"
+                [ngTemplateOutletContext]="{ campos: categoria.campos, layout: 'normal' }"
+              />
+            </section>
+          }
+        </section>
+      }
+    </div>
+  </div>
+}

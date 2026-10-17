@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 @Component({
   selector: 'app-select',
@@ -10,4 +10,14 @@ export class Select {
   @Input({ required: true }) label = '';
   @Input() id = 'select';
   @Input() options: string[] = [];
+  @Input() value = '';
+  @Input() readOnly = false;
+  @Output() valueChange = new EventEmitter<string>();
+
+  onChange(event: Event): void {
+    if (this.readOnly) {
+      return;
+    }
+    this.valueChange.emit((event.target as HTMLSelectElement).value);
+  }
 }

@@ -1,8 +1,11 @@
 <div class="form-group">
   <label [for]="id">{{ label }}</label>
-  <select class="form-control" [id]="id">
+  <select class="form-control" [id]="id" [disabled]="readOnly" (change)="onChange($event)">
+    @if (!value) {
+      <option value="" disabled selected></option>
+    }
     @for (option of options; track option) {
-      <option [value]="option">{{ option }}</option>
+      <option [value]="option" [selected]="option === value">{{ option }}</option>
     }
   </select>
 </div>

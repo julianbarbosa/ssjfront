@@ -27,6 +27,18 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'visita',
+    component: Layout,
+    // canActivate: [authGuard],
+    children: [
+      {
+        path: '',
+        loadChildren: () =>
+          import('./features/visita/visita-module').then((m) => m.VisitaModule),
+      }
+    ],
+  },
+  {
     path: '**',
     redirectTo: '',
   },
