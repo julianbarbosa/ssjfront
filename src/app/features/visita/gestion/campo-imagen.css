@@ -1,0 +1,83 @@
+.gestion-imagen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.gestion-archivo {
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  overflow: hidden;
+}
+
+.gestion-archivo__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.gestion-archivo__nombre {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.375rem 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gestion-archivo__boton {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  background: #004884;
+  color: #fff;
+  pointer-events: none;
+}
+
+.gestion-archivo:focus-within {
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.25rem rgb(13 110 253 / 25%);
+}
+
+.gestion-imagen__vista {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  max-height: 8rem;
+  margin: 0;
+}
+
+.gestion-imagen__aviso {
+  margin: 0;
+  color: #9b1b30;
+  font-size: 0.875rem;
+}
+
+.gestion-imagen .btn {
+  align-self: flex-start;
+  max-width: 100%;
+}
+
+.gestion-imagen__etiqueta--oculta {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

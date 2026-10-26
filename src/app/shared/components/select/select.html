@@ -1,6 +1,6 @@
 <div class="form-group">
-  <label [for]="id">{{ label }}</label>
-  <select class="form-control" [id]="id" [disabled]="readOnly" (change)="onChange($event)">
+  <label [for]="id" [class.campo-etiqueta--oculta]="ocultarEtiqueta">{{ label }}</label>
+  <select class="form-control" [id]="id" [disabled]="readOnly" (change)="onChange($event)" (blur)="onBlur()">
     @if (!value) {
       <option value="" disabled selected></option>
     }

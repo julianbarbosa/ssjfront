@@ -1,0 +1,37 @@
+<div class="form-group gestion-imagen">
+  <label [for]="'campo-' + campo.id" [class.gestion-imagen__etiqueta--oculta]="ocultarEtiqueta">
+    {{ etiqueta }}
+  </label>
+  <div class="form-control gestion-archivo">
+    @if (!campo.soloLectura) {
+      <input
+        class="gestion-archivo__input"
+        [id]="'campo-' + campo.id"
+        type="file"
+        accept=".png,.jpeg,.jpg,image/png,image/jpeg"
+        (change)="archivoChange.emit($event)"
+        (blur)="blurred.emit()"
+      />
+    }
+    <span class="gestion-archivo__nombre">{{ nombre }}</span>
+    @if (!campo.soloLectura) {
+      <span class="gestion-archivo__boton" aria-hidden="true">Seleccionar</span>
+    }
+  </div>
+  @if (vistaPrevia) {
+    <img class="gestion-imagen__vista" [src]="vistaPrevia" [alt]="'Vista previa de ' + nombre" />
+    <app-button label="Quitar selección" (clicked)="quitar.emit()" />
+  }
+  @if (urlGuardada) {
+    @if (!noDisponible) {
+      <img
+        class="gestion-imagen__vista"
+        [src]="urlGuardada"
+        [alt]="etiqueta"
+        (error)="noDisponibleChange.emit()"
+      />
+    } @else {
+      <p class="gestion-imagen__aviso">No se pudo mostrar la imagen guardada. La referencia se conserva.</p>
+    }
+  }
+</div>

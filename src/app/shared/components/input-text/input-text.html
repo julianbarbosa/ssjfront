@@ -1,5 +1,5 @@
 <div class="form-group">
-  <label [for]="id">{{ label }}</label>
+  <label [for]="id" [class.campo-etiqueta--oculta]="ocultarEtiqueta">{{ label }}</label>
   <input
     type="text"
     class="form-control"
@@ -7,5 +7,6 @@
     [placeholder]="placeholder"
     [value]="value"
     [readOnly]="readOnly"
+    (blur)="onBlur($event)"
   />
 </div>

@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 @Component({
   selector: 'app-input-text, app-input',
@@ -12,4 +12,16 @@ export class InputText {
   @Input() placeholder = '';
   @Input() value = '';
   @Input() readOnly = false;
+  /** Oculta la etiqueta visual. El vínculo con el control se conserva. */
+  @Input() ocultarEtiqueta = false;
+  @Output() valueChange = new EventEmitter<string>();
+  @Output() blurred = new EventEmitter<void>();
+
+  onBlur(event: Event): void {
+    if (this.readOnly) {
+      return;
+    }
+    this.valueChange.emit((event.target as HTMLInputElement).value);
+    this.blurred.emit();
+  }
 }
