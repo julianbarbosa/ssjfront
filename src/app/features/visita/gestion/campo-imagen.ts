@@ -17,6 +17,12 @@ export class CampoImagen {
   @Input() vistaPrevia: string | null = null;
   @Input() urlGuardada: string | null = null;
   @Input() noDisponible = false;
+  /** Modo observación: se ve la imagen guardada pero no se puede cambiar. */
+  @Input() bloqueado = false;
+
+  get editable(): boolean {
+    return !this.campo.soloLectura && !this.bloqueado;
+  }
 
   @Output() archivoChange = new EventEmitter<Event>();
   @Output() quitar = new EventEmitter<void>();

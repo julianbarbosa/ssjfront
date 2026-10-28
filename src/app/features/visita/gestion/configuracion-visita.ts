@@ -2,13 +2,9 @@ import { ConfiguracionFormulario } from '../../../core/services/visita-limpia.se
 
 /**
  * Presentación de la pantalla de gestión de visita.
- * Solo completa encabezados de categorías cuya API no los trae; las que sí los
- * traen usan los suyos. Las columnas se llenan en el orden en que llegan los campos.
+ * El ancho de cada campo lo decide `Gestion.claseColumna` por tipo.
  */
 export const configuracionVisita: ConfiguracionFormulario = {
-  clasePorTipo: (tipo, soloLectura) =>
-    (tipo === 'texto-min' || tipo === 'texto-corto') && !soloLectura ? 'col-md-6' : null,
-  encabezadosPorCategoria: {
-    56: ['Ítem', 'Aprobado en planos', 'Verificado en obra'],
-  },
+  // TEMPORAL: quitar cuando SAUL envíe descripcion "Ítem,Aprobado en planos,Verificado en obra"
+  encabezadosPorCategoria: { 56: ['Ítem', 'Aprobado en planos', 'Verificado en obra'] },
 };

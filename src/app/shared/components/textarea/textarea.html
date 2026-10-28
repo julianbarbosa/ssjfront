@@ -1,0 +1,14 @@
+<div class="form-group">
+  <label [for]="id" [class.campo-etiqueta--oculta]="ocultarEtiqueta">{{ label }}</label>
+  <textarea
+    #cuadro
+    class="form-control campo-textarea"
+    rows="3"
+    [id]="id"
+    [placeholder]="placeholder"
+    [value]="value"
+    [readOnly]="readOnly"
+    (input)="ajustarAlto()"
+    (blur)="onBlur($event)"
+  ></textarea>
+</div>

@@ -3,7 +3,14 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { VisitaCampo, VisitaCategoria, VisitaFormularioCategoriaRaw } from '../interfaces/visita.interface';
+import {
+  PersonaSaulRaw,
+  VisitaCampo,
+  VisitaCategoria,
+  VisitaDetalle,
+  VisitaEncabezado,
+  VisitaFormularioCategoriaRaw,
+} from '../interfaces/visita.interface';
 import { serializarValorVisita } from './visita-limpia.service';
 
 export interface VisitaGuardadoRespuesta {
@@ -23,6 +30,14 @@ export class VisitaService {
     return this.http.get<VisitaFormularioCategoriaRaw[] | VisitaCategoria[]>(
       `${this.baseUrl}/visita/generar/${idVisita}`,
     );
+  }
+
+  /**
+   * GET `/visita/{idVisita}`: detalle de la visita, la misma consulta que hace SAUL con `Visita.find`.
+   * `baseUrl` no termina en "/", por eso la ruta empieza con "/visita".
+   */
+  findById(idVisita: string | number): Observable<VisitaDetalle> {
+    return this.http.get<VisitaDetalle>(`${this.baseUrl}/visita/${idVisita}`);
   }
 
   urlDocumento(nombre: string): string | null {
@@ -61,6 +76,35 @@ export class VisitaService {
       cuerpoImagenVisita(idVisita, campo, archivo),
     );
   }
+}
+
+/** Pasa la entidad Visita de SAUL a los textos del encabezado. Lo que no viene queda vacío o null. */
+export function aEncabezadoVisita(visita: VisitaDetalle): VisitaEncabezado {
+  return {
+    consecutivo: visita.idVisita,
+    estado: textoOVacio(visita.estado?.nombre),
+    visitador: nombrePersona(visita.visitador),
+    revisor: nombrePersona(visita.supervisor),
+    tipoVisita: textoOVacio(visita.tipoVisita?.descripcion),
+    radicadoSolicitud: textoONull(visita.solicitud?.radicado),
+    radicadoRespuesta: textoONull(visita.solicitud?.radicadohijo),
+    radicadoInspeccion: textoONull(visita.radicadoInspeccion),
+  };
+}
+
+function nombrePersona(persona: PersonaSaulRaw | null | undefined): string {
+  return [persona?.firstName, persona?.lastName]
+    .map((parte) => textoOVacio(parte))
+    .filter((parte) => parte.length > 0)
+    .join(' ');
+}
+
+function textoOVacio(texto: string | null | undefined): string {
+  return (texto ?? '').trim();
+}
+
+function textoONull(texto: string | null | undefined): string | null {
+  return textoOVacio(texto) || null;
 }
 
 /** Multipart de SAUL: el archivo viaja como `files[codigo][file]`, no como texto. */

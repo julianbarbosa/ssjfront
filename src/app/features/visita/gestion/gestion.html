@@ -1,5 +1,27 @@
-@if (mensajeError) {
-  <p class="gestion-error" role="alert">{{ mensajeError }}</p>
+@if (mensajeError()) {
+  <p class="gestion-error" role="alert">{{ mensajeError() }}</p>
+}
+
+@if (encabezado(); as visita) {
+  <section class="gestion-encabezado" aria-labelledby="gestion-encabezado-titulo">
+    <h1 id="gestion-encabezado-titulo" class="gestion-encabezado__titulo">Registro de Visita</h1>
+    <dl class="gestion-encabezado__datos">
+      <div><dt>Consecutivo</dt><dd>{{ visita.consecutivo }}</dd></div>
+      <div><dt>Estado</dt><dd>{{ visita.estado || 'Sin estado' }}</dd></div>
+      <div><dt>Visitador</dt><dd>{{ visita.visitador || 'Sin asignar' }}</dd></div>
+      <div><dt>Revisor</dt><dd>{{ visita.revisor || 'Sin asignar' }}</dd></div>
+      <div><dt>Tipo de Visita</dt><dd>{{ visita.tipoVisita || 'Sin tipo' }}</dd></div>
+      @if (visita.radicadoSolicitud) {
+        <div><dt>Radicado Solicitud</dt><dd>{{ visita.radicadoSolicitud }}</dd></div>
+      }
+      @if (visita.radicadoRespuesta) {
+        <div><dt>Radicado Respuesta</dt><dd>{{ visita.radicadoRespuesta }}</dd></div>
+      }
+      @if (visita.radicadoInspeccion) {
+        <div><dt>Radicado Remisión a Inspección</dt><dd>{{ visita.radicadoInspeccion }}</dd></div>
+      }
+    </dl>
+  </section>
 }
 
 <div class="gestion-toolbar">
@@ -13,7 +35,11 @@
 </div>
 
 <ng-template #contenidoMapa>
-  <app-map markerTitle="Ubicación de la visita" />
+  <app-map
+    [latitude]="centroMapa().latitud"
+    [longitude]="centroMapa().longitud"
+    [markerTitle]="ubicacion() ? 'Ubicación de la visita' : 'Visita sin ubicación registrada'"
+  />
 </ng-template>
 
 <ng-template #controlCampo let-campo="campo" let-etiqueta="etiqueta" let-ocultarEtiqueta="ocultarEtiqueta">
@@ -24,7 +50,7 @@
       [ocultarEtiqueta]="!!ocultarEtiqueta"
       [options]="opcionesSelect(campo)"
       [value]="valorCampo(campo)"
-      [readOnly]="campo.soloLectura"
+      [readOnly]="soloLectura(campo)"
       (valueChange)="actualizarValor(campo, $event)"
       (blurred)="saveItem(campo)"
     />
@@ -37,20 +63,34 @@
       [vistaPrevia]="vistaPrevia(campo.codigo)"
       [urlGuardada]="urlImagenGuardada(campo)"
       [noDisponible]="imagenNoDisponible(campo.codigo)"
+      [bloqueado]="modoObservacion"
       (archivoChange)="onArchivoSeleccionado(campo, $event)"
       (blurred)="saveItem(campo)"
       (quitar)="limpiarSeleccion(campo)"
       (noDisponibleChange)="marcarImagenNoDisponible(campo.codigo)"
+    />
+  } @else if (esTextoLargo(campo)) {
+    <app-textarea
+      [id]="'campo-' + campo.id"
+      [label]="etiqueta"
+      [ocultarEtiqueta]="!!ocultarEtiqueta"
+      [value]="valorCampo(campo)"
+      [readOnly]="soloLectura(campo)"
+      (valueChange)="actualizarValor(campo, $event)"
+      (blurred)="saveItem(campo)"
     />
   } @else if (esInput(campo)) {
     <app-input
       [id]="'campo-' + campo.id"
       [label]="etiqueta"
       [ocultarEtiqueta]="!!ocultarEtiqueta"
-      [value]="valorCampo(campo)"
-      [readOnly]="campo.soloLectura"
+      [type]="tipoInput(campo)"
+      [step]="tipoInput(campo) === 'number' ? '0.01' : null"
+      [value]="valorInput(campo)"
+      [readOnly]="soloLectura(campo)"
       (valueChange)="actualizarValor(campo, $event)"
-      (blurred)="saveItem(campo)"
+      (changed)="alCambiarInput(campo, $event)"
+      (blurred)="alSalirInput(campo)"
     />
   }
 </ng-template>
@@ -58,20 +98,25 @@
 <ng-template #camposCategoria let-categoria="categoria" let-layout="layout">
   @for (bloque of bloquesCategoria(categoria); track $index) {
     @if (bloque.tabla; as tabla) {
-      <div class="table-responsive">
+      @let titulo = columnaTitulo(tabla);
+      @let claseTitulo = 'gestion-tabla__titulo';
+      <div
+        class="table-responsive gestion-tabla__contenedor"
+        [class.gestion-tabla__contenedor--compacta]="esTablaCompacta(tabla)"
+      >
         <table class="table table-bordered gestion-tabla">
           <thead>
             <tr>
-              @for (encabezado of tabla.encabezados; track encabezado + $index) {
-                <th scope="col">{{ encabezado }}</th>
+              @for (encabezado of encabezadosVisibles(tabla); track encabezado + $index) {
+                <th scope="col" [ngClass]="titulo && $first ? claseTitulo : ''">{{ encabezado }}</th>
               }
             </tr>
           </thead>
           <tbody>
             @for (fila of tabla.filas; track fila.titulo + $index) {
               <tr>
-                @if (tabla.tituloIndependiente) {
-                  <th scope="row">{{ fila.titulo }}</th>
+                @if (titulo) {
+                  <th scope="row" [ngClass]="claseTitulo">{{ fila.titulo }}</th>
                 }
                 @for (celda of fila.celdas; track $index) {
                   <td>
@@ -80,9 +125,6 @@
                       @let detalle = etiquetaAdicional(celda, columna, fila.titulo);
                       <div class="gestion-celda">
                         <span class="gestion-celda__columna" aria-hidden="true">{{ columna }}</span>
-                        @if (detalle) {
-                          <p class="gestion-celda__detalle" aria-hidden="true">{{ detalle }}</p>
-                        }
                         <ng-container
                           [ngTemplateOutlet]="controlCampo"
                           [ngTemplateOutletContext]="{
@@ -111,7 +153,7 @@
             <div class="col-12">
               <div class="row gestion-registro">
                 @for (celda of fila; track celda.campo.id) {
-                  <div class="w-100 d-none" [class.d-md-block]="celda.salto" aria-hidden="true"></div>
+                  <div class="w-100 d-none order-md-2" [class.d-md-block]="celda.salto" aria-hidden="true"></div>
                   <div class="gestion-campo" [ngClass]="celda.clase">
                     <ng-container
                       [ngTemplateOutlet]="controlCampo"
@@ -123,7 +165,7 @@
             </div>
           }
           @for (campo of grupo.campos; track campo.id) {
-            <div class="gestion-campo" [ngClass]="campo.clase ?? 'col-12'">
+            <div class="gestion-campo" [ngClass]="claseColumna(campo)">
               <ng-container
                 [ngTemplateOutlet]="controlCampo"
                 [ngTemplateOutletContext]="contextoCampo(campo, labelCampo(campo))"

@@ -53,10 +53,14 @@
 
 .gestion-imagen__vista {
   display: block;
-  max-width: 100%;
-  height: auto;
-  max-height: 8rem;
+  width: 100%;
+  max-width: 320px;
+  height: 180px;
   margin: 0;
+  object-fit: contain;
+  background: #f4f6f8;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
 }
 
 .gestion-imagen__aviso {

@@ -1,3 +1,59 @@
+/** Usuario de SAUL tal como lo serializa la entidad (visitador, supervisor). */
+export interface PersonaSaulRaw {
+  firstName?: string | null;
+  lastName?: string | null;
+}
+
+/** Fecha serializada por SAUL (DateTime de PHP): se usa `timestamp` en segundos. */
+export interface FechaSaulRaw {
+  timestamp: number;
+}
+
+/**
+ * Respuesta de `GET /visita/{idVisita}` (saul2: VisitaController::listarAction, entidad Visita.php).
+ * Son los datos generales de la visita, no los valores de los campos del formulario
+ * (esos llegan en `GET /visita/generar/{idVisita}`).
+ * Solo se tipan los campos que usa ssjfront; la entidad trae más.
+ */
+export interface VisitaDetalle {
+  idVisita: number;
+  idTipoVisita?: number | null;
+  /** 1 = formulario dinámico. */
+  esDinamica?: number | null;
+  estado?: { nombre?: string | null; codigo?: string | null } | null;
+  visitador?: PersonaSaulRaw | null;
+  supervisor?: PersonaSaulRaw | null;
+  tipoVisita?: { descripcion?: string | null; codigo?: string | null } | null;
+  solicitud?: { radicado?: string | null; radicadohijo?: string | null } | null;
+  radicadoInspeccion?: string | null;
+  /** Coordenadas como texto (columnas `text` en BD). */
+  longitud?: string | null;
+  latitud?: string | null;
+  observaciones?: string | null;
+  nombreTitular?: string | null;
+  direccionQueja?: string | null;
+  fechaProgramacion?: FechaSaulRaw | null;
+  fechaVisita?: FechaSaulRaw | null;
+}
+
+/** Ubicación de la visita ya validada, en grados decimales (WGS84), lista para el mapa. */
+export interface UbicacionVisita {
+  latitud: number;
+  longitud: number;
+}
+
+/** Encabezado «Registro de Visita», igual al de SAUL (registrarVisita.tpl.html). */
+export interface VisitaEncabezado {
+  consecutivo: number;
+  estado: string;
+  visitador: string;
+  revisor: string;
+  tipoVisita: string;
+  radicadoSolicitud: string | null;
+  radicadoRespuesta: string | null;
+  radicadoInspeccion: string | null;
+}
+
 /** Respuesta cruda del API SAUL2 (formato legacy). */
 export interface ItemVisitaCampoRaw {
   idItemVisita: number;

@@ -3,7 +3,7 @@
     {{ etiqueta }}
   </label>
   <div class="form-control gestion-archivo">
-    @if (!campo.soloLectura) {
+    @if (editable) {
       <input
         class="gestion-archivo__input"
         [id]="'campo-' + campo.id"
@@ -14,7 +14,7 @@
       />
     }
     <span class="gestion-archivo__nombre">{{ nombre }}</span>
-    @if (!campo.soloLectura) {
+    @if (editable) {
       <span class="gestion-archivo__boton" aria-hidden="true">Seleccionar</span>
     }
   </div>

@@ -1,12 +1,14 @@
 <div class="form-group">
   <label [for]="id" [class.campo-etiqueta--oculta]="ocultarEtiqueta">{{ label }}</label>
   <input
-    type="text"
     class="form-control"
+    [type]="type"
+    [attr.step]="type === 'number' ? step : null"
     [id]="id"
     [placeholder]="placeholder"
     [value]="value"
     [readOnly]="readOnly"
+    (change)="onChange($event)"
     (blur)="onBlur($event)"
   />
 </div>

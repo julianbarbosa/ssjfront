@@ -70,10 +70,12 @@
 }
 
 .gestion-categoria {
+  min-width: 0;
   scroll-margin-top: 1rem;
 }
 
 .gestion-accordion__item {
+  min-width: 0;
   scroll-margin-top: 1rem;
 }
 
@@ -122,19 +124,89 @@
   font-weight: 600;
 }
 
+.gestion-tabla__contenedor {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #b8c4d1 #f1f3f5;
+}
+
+.gestion-tabla__contenedor::-webkit-scrollbar {
+  height: 10px;
+}
+
+.gestion-tabla__contenedor::-webkit-scrollbar-track {
+  background: #f1f3f5;
+  border-radius: 5px;
+}
+
+.gestion-tabla__contenedor::-webkit-scrollbar-thumb {
+  background: #b8c4d1;
+  border-radius: 5px;
+}
+
+.gestion-tabla__contenedor--compacta {
+  max-width: 48rem;
+}
+
 .gestion-tabla {
+  width: 100%;
   margin-bottom: 0;
+  table-layout: auto;
+}
+
+.gestion-tabla th,
+.gestion-tabla td {
+  padding: 0.5rem;
 }
 
 .gestion-tabla th {
   color: #004884;
   background: #f4f7fb;
   vertical-align: middle;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.gestion-tabla th[scope='col'] {
+  white-space: normal;
+  text-align: center;
+  font-size: 0.75rem;
+}
+
+.gestion-tabla td,
+.gestion-tabla th[scope='col']:not(.gestion-tabla__titulo) {
+  min-width: 9rem;
 }
 
 .gestion-tabla td {
-  min-width: 10rem;
-  vertical-align: top;
+  vertical-align: middle;
+}
+
+.gestion-tabla__titulo {
+  min-width: 12rem;
+  max-width: 20rem;
+  font-weight: 700;
+  white-space: normal;
+}
+
+.gestion-tabla__contenedor:not(.gestion-tabla__contenedor--compacta) .gestion-tabla__titulo {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #f4f7fb;
+  box-shadow: inset -1px 0 0 #dee2e6;
+}
+
+.gestion-tabla__contenedor:not(.gestion-tabla__contenedor--compacta) thead .gestion-tabla__titulo {
+  z-index: 2;
+}
+
+.gestion-celda,
+.gestion-celda > * {
+  display: block;
+  width: 100%;
+  min-width: 0;
 }
 
 .gestion-registro.row {
@@ -142,8 +214,7 @@
   min-width: 0;
 }
 
-.gestion-celda__columna,
-.gestion-celda__detalle {
+.gestion-celda__columna {
   display: block;
   margin-bottom: 0.35rem;
   color: #004884;
@@ -164,6 +235,10 @@
 }
 
 @media (max-width: 768px) {
+  .gestion-tabla__contenedor {
+    overflow-x: visible;
+  }
+
   .gestion-tabla thead {
     display: none;
   }
@@ -172,10 +247,18 @@
   .gestion-tabla tbody,
   .gestion-tabla tr,
   .gestion-tabla th,
-  .gestion-tabla td {
+  .gestion-tabla td,
+  .gestion-tabla th[scope='col']:not(.gestion-tabla__titulo),
+  .gestion-tabla__titulo {
     display: block;
     width: 100%;
     min-width: 0;
+    max-width: none;
+  }
+
+  .gestion-tabla__contenedor:not(.gestion-tabla__contenedor--compacta) .gestion-tabla__titulo {
+    position: static;
+    box-shadow: none;
   }
 
   .gestion-tabla tr {
@@ -187,6 +270,11 @@
 
   .gestion-tabla th[scope='row'] {
     background: #f4f7fb;
+  }
+
+  .gestion-tabla th[scope='row']:empty,
+  .gestion-celda__columna:empty {
+    display: none;
   }
 
   .gestion-celda__columna {
@@ -258,4 +346,39 @@
 .gestion-accordion__body {
   padding: 0 1rem 1rem;
   border-top: 1px solid #eee;
+}
+
+/* Encabezado «Registro de Visita» (mismos datos que SAUL). */
+.gestion-encabezado {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #dee2e6;
+  border-left: 4px solid #004884;
+  border-radius: 0.375rem;
+  background: #f4f7fb;
+}
+
+.gestion-encabezado__titulo {
+  margin: 0 0 0.75rem;
+  color: #004884;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.gestion-encabezado__datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+}
+
+.gestion-encabezado__datos dt {
+  color: #4b4b4b;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.gestion-encabezado__datos dd {
+  margin: 0;
+  overflow-wrap: anywhere;
 }

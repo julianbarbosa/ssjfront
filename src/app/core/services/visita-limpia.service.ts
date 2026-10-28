@@ -2,8 +2,10 @@ import { Injectable } from '@angular/core';
 import {
   BloquePresentacion,
   ItemVisitaCampoRaw,
+  UbicacionVisita,
   VisitaCampo,
   VisitaCategoria,
+  VisitaDetalle,
   VisitaFilaTabla,
   VisitaFormularioCategoriaRaw,
   VisitaTabla,
@@ -17,11 +19,20 @@ interface FilaOrigen {
   celdas: VisitaCampo[];
 }
 
+interface FilaReconocida {
+  /** Filas consecutivas con la misma clave van en la misma tabla. */
+  clave: string;
+  /** Vacío cuando los encabezados se deciden al cerrar la tabla. */
+  encabezados: string[];
+  tituloIndependiente: boolean;
+  fila: VisitaFilaTabla;
+}
+
 /**
  * Presentación que aporta cada formulario. El servicio no guarda esta
  * configuración: hay que pasarla en cada llamada.
- * `encabezadosPorCategoria` (clave `idCategoriaItem`) solo se usa cuando la API
- * no trae encabezados para esa categoría. Se leen igual que los de SAUL.
+ * `encabezadosPorCategoria` (clave `idCategoriaItem`) solo se usa en tablas
+ * armadas por estructura cuando ni la API ni los campos traen encabezados.
  */
 export interface ConfiguracionFormulario {
   clasePorTipo?: (tipo: string, soloLectura: boolean) => string | null;
@@ -59,6 +70,32 @@ export class VisitaLimpiaService {
   }
 
   /**
+   * Ubicación de la visita a partir de `GET /visita/{id}` (columnas `latitud` y `longitud`, texto en BD).
+   * Devuelve null si falta alguna, no es número, está fuera de rango o es 0,0 (valor vacío típico).
+   * Acepta coma decimal ("3,4372"). Es la limpieza de los datos generales, como `limpiar()` lo es del formulario.
+   */
+  ubicacion(visita: VisitaDetalle | null | undefined): UbicacionVisita | null {
+    const latitud = this.aCoordenada(visita?.latitud);
+    const longitud = this.aCoordenada(visita?.longitud);
+    if (latitud === null || longitud === null) {
+      return null;
+    }
+    if (Math.abs(latitud) > 90 || Math.abs(longitud) > 180 || (latitud === 0 && longitud === 0)) {
+      return null;
+    }
+    return { latitud, longitud };
+  }
+
+  private aCoordenada(texto: string | null | undefined): number | null {
+    const limpio = (texto ?? '').trim().replace(',', '.');
+    if (!limpio) {
+      return null;
+    }
+    const numero = Number(limpio);
+    return Number.isFinite(numero) ? numero : null;
+  }
+
+  /**
    * Índice de la lista recibida, keyed por `codigo`. No queda guardado en el servicio.
    * Si un formulario repite `codigo`, aunque los valores sean distintos, ambos campos
    * siguen en `campos`. Este índice solo puede señalar uno: la última aparición.
@@ -80,12 +117,11 @@ export class VisitaLimpiaService {
       celdas: entry.item.items.map((it) => this.limpiarCampo(it, configuracion)),
     }));
     const campos = filas.flatMap((fila) => fila.celdas);
-    const encabezados = this.encabezados(
-      cat.arrayDescripcion,
-      cat.descripcion,
+    const presentacion = this.presentar(
+      this.encabezadosApi(cat.arrayDescripcion, cat.descripcion),
       configuracion?.encabezadosPorCategoria?.[cat.idCategoriaItem],
+      filas,
     );
-    const presentacion = this.presentar(encabezados, filas);
 
     return {
       id: cat.idCategoriaItem,
@@ -126,17 +162,21 @@ export class VisitaLimpiaService {
   }
 
   /**
-   * Arma bloques en el orden de los grupos. Un grupo es fila de tabla cuando
-   * su cantidad de campos encaja con los encabezados; las celdas quedan en el
-   * orden de la API. Si no encaja, el grupo sigue como campos, con su etiqueta.
+   * Arma bloques en el orden de los grupos. Un grupo es fila de tabla cuando su
+   * cantidad de campos encaja con los encabezados de la API, o cuando tiene dos o
+   * más campos que se llaman como el grupo (o no tienen nombre propio). Las filas
+   * consecutivas del mismo tipo y tamaño forman una tabla; las celdas quedan en el
+   * orden de la API. Un grupo que no cumple sigue como campos, con su etiqueta.
    * La celda y su campo son el mismo objeto dentro del resultado.
    */
   private presentar(
     encabezados: string[],
+    configurados: string[] | undefined,
     filas: FilaOrigen[],
   ): { tabla: VisitaTabla | null; bloques: BloquePresentacion[] } {
     const bloques: BloquePresentacion[] = [];
     let tablaActual: VisitaTabla | null = null;
+    let claveActual: string | null = null;
     let sueltos: VisitaCampo[] = [];
 
     const cerrarSueltos = (): void => {
@@ -150,27 +190,28 @@ export class VisitaLimpiaService {
       if (!tablaActual) {
         return;
       }
+      if (tablaActual.encabezados.length === 0) {
+        tablaActual.encabezados = this.encabezadosEstructura(tablaActual.filas, configurados);
+      }
       bloques.push({ tabla: tablaActual, campos: [] });
       tablaActual = null;
+      claveActual = null;
     };
 
     for (const fila of filas) {
-      const reconocida = this.filaSegunEncabezados(fila, encabezados);
+      const reconocida = this.filaSegunEncabezados(fila, encabezados) ?? this.filaSegunEstructura(fila);
       if (!reconocida) {
         cerrarTabla();
         sueltos.push(...fila.celdas);
         continue;
       }
       cerrarSueltos();
-      if (
-        tablaActual &&
-        tablaActual.tituloIndependiente === reconocida.tituloIndependiente &&
-        this.mismosTextos(tablaActual.encabezados, reconocida.encabezados)
-      ) {
+      if (tablaActual && claveActual === reconocida.clave) {
         tablaActual.filas.push(reconocida.fila);
         continue;
       }
       cerrarTabla();
+      claveActual = reconocida.clave;
       tablaActual = {
         encabezados: reconocida.encabezados,
         tituloIndependiente: reconocida.tituloIndependiente,
@@ -185,16 +226,12 @@ export class VisitaLimpiaService {
   }
 
   /**
-   * Primero `arrayDescripcion`; si no trae columnas, `descripcion` separada por comas
-   * (lo que hace `getArrayDescripcion` en SAUL); si tampoco, la configuración.
+   * `arrayDescripcion`; si no trae columnas, `descripcion` separada por comas
+   * (lo que hace `getArrayDescripcion` en SAUL).
    * Un texto vacío ocupa su columna, como en SAUL: `,Norma,Aprobados` son tres.
    */
-  private encabezados(
-    arrayDescripcion: string[] | undefined,
-    descripcion: string | null | undefined,
-    configurados: string[] | undefined,
-  ): string[] {
-    for (const lista of [arrayDescripcion, descripcion?.split(','), configurados]) {
+  private encabezadosApi(arrayDescripcion: string[] | undefined, descripcion: string | null | undefined): string[] {
+    for (const lista of [arrayDescripcion, descripcion?.split(',')]) {
       const textos = (lista ?? []).map((texto) => texto.trim());
       if (textos.length > 1 && textos.some((texto) => texto.length > 0)) {
         return textos;
@@ -203,19 +240,75 @@ export class VisitaLimpiaService {
     return [];
   }
 
-  private filaSegunEncabezados(
-    fila: FilaOrigen,
-    encabezados: string[],
-  ): { encabezados: string[]; tituloIndependiente: boolean; fila: VisitaFilaTabla } | null {
+  /**
+   * Encabezados de una tabla armada por estructura, en este orden:
+   * el texto propio de cada columna (`label` o `descripcion` del campo) si es el mismo
+   * en todas las filas; si no, los configurados para la categoría; si no, `Ítem` y
+   * columnas sin nombre.
+   */
+  private encabezadosEstructura(filas: VisitaFilaTabla[], configurados: string[] | undefined): string[] {
+    const cantidad = filas[0].celdas.length;
+    const propios = Array.from({ length: cantidad }, (_, indice) => {
+      const textos = filas.map((fila) => {
+        const celda = fila.celdas[indice];
+        const texto = (celda?.label ?? celda?.descripcion ?? '').trim();
+        return this.normalizar(texto) === this.normalizar(fila.titulo) ? '' : texto;
+      });
+      const primero = textos[0];
+      return primero && textos.every((texto) => this.normalizar(texto) === this.normalizar(primero)) ? primero : null;
+    });
+    if (propios.every((texto) => texto !== null)) {
+      return ['Ítem', ...(propios as string[])];
+    }
+    const configuracion = (configurados ?? []).map((texto) => texto.trim());
+    if (configuracion.length === cantidad + 1) {
+      return configuracion;
+    }
+    return ['Ítem', ...Array.from({ length: cantidad }, () => '')];
+  }
+
+  private filaSegunEncabezados(fila: FilaOrigen, encabezados: string[]): FilaReconocida | null {
     const modo = this.encajeTabla(fila.celdas.length, encabezados.length);
     if (!modo) {
       return null;
     }
     return {
+      clave: `api:${modo}:${encabezados.join('\u0000')}`,
       encabezados: [...encabezados],
       tituloIndependiente: modo === 'titulo',
       fila: { titulo: fila.nombre.trim(), celdas: [...fila.celdas] },
     };
+  }
+
+  /** Dos o más campos que se llaman como el grupo, o sin nombre propio. */
+  private filaSegunEstructura(fila: FilaOrigen): FilaReconocida | null {
+    const titulo = this.normalizar(fila.nombre);
+    if (fila.celdas.length < 2 || !titulo) {
+      return null;
+    }
+    const mismoNombre = fila.celdas.every((celda) => {
+      const nombre = this.normalizar(celda.nombre);
+      return !nombre || nombre === titulo;
+    });
+    if (!mismoNombre) {
+      return null;
+    }
+    return {
+      clave: `estructura:${fila.celdas.length}`,
+      encabezados: [],
+      tituloIndependiente: true,
+      fila: { titulo: fila.nombre.trim(), celdas: [...fila.celdas] },
+    };
+  }
+
+  /** Sin mayúsculas, tildes ni espacios repetidos. */
+  private normalizar(texto: string | null | undefined): string {
+    return (texto ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('es')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   /** `titulo`: sobra un encabezado para el nombre del grupo. `directo`: un encabezado por campo. */
@@ -230,10 +323,6 @@ export class VisitaLimpiaService {
       return 'directo';
     }
     return null;
-  }
-
-  private mismosTextos(izquierda: string[], derecha: string[]): boolean {
-    return izquierda.length === derecha.length && izquierda.every((texto, indice) => texto === derecha[indice]);
   }
 
   private copiarTabla(

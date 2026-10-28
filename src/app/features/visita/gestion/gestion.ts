@@ -1,23 +1,37 @@
-import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
-import { BloquePresentacion, VisitaCampo, VisitaCategoria, VisitaTabla } from '../../../core/interfaces/visita.interface';
+import {
+  BloquePresentacion,
+  VisitaCampo,
+  VisitaCategoria,
+  UbicacionVisita,
+  VisitaDetalle,
+  VisitaEncabezado,
+  VisitaTabla,
+} from '../../../core/interfaces/visita.interface';
+import { FormatoTextoService } from '../../../core/services/formato-texto.service';
 import { VisitaLimpiaService } from '../../../core/services/visita-limpia.service';
-import { VisitaService } from '../../../core/services/visita.service';
+import { aEncabezadoVisita, VisitaService } from '../../../core/services/visita.service';
 import { Button } from '../../../shared/components/button/button';
 import { InputText } from '../../../shared/components/input-text/input-text';
 import { MapComponent } from '../../../shared/components/map/map';
 import { Select } from '../../../shared/components/select/select';
+import { Textarea } from '../../../shared/components/textarea/textarea';
 import { SharedModule } from '../../../shared/shared-module';
 import { CampoImagen } from './campo-imagen';
+import { fechaParaInput, fechaParaSaul, horaParaInput, horaParaSaul } from './fecha-hora-visita';
 import { configuracionVisita } from './configuracion-visita';
 
 export type ModoVisualizacion = 'normal' | 'acordion' | 'horizontal';
 
+/** Centro del mapa cuando la visita no trae coordenadas válidas (Cali, igual que `MapComponent`). */
+const UBICACION_POR_DEFECTO: UbicacionVisita = { latitud: 3.4516, longitud: -76.5225 };
+
 interface ParRegistro {
   imagen: VisitaCampo;
-  descripcion: VisitaCampo;
+  descripcion: VisitaCampo | null;
 }
 
 interface CeldaRegistro {
@@ -34,7 +48,7 @@ interface BloqueCampos {
 
 @Component({
   selector: 'app-gestion',
-  imports: [SharedModule, Button, CampoImagen, InputText, MapComponent, Select],
+  imports: [SharedModule, Button, CampoImagen, InputText, MapComponent, Select, Textarea],
   templateUrl: './gestion.html',
   styleUrl: './gestion.css',
 })
@@ -43,7 +57,21 @@ export class Gestion implements OnInit, OnDestroy {
   readonly categoriaMapaId = 0;
   readonly categoriaMapaNombre = 'Mapa';
 
+  /** Estructura del formulario con sus valores (GET /visita/generar/{id}). */
   readonly dataForm = signal<VisitaCategoria[]>([]);
+  /** Datos generales de la visita (GET /visita/{id}). null mientras carga o si falla. */
+  readonly visitaDetalle = signal<VisitaDetalle | null>(null);
+  /** Encabezado «Registro de Visita»: se recalcula solo cuando cambia `visitaDetalle`. */
+  readonly encabezado = computed<VisitaEncabezado | null>(() => {
+    const visita = this.visitaDetalle();
+    return visita ? aEncabezadoVisita(visita) : null;
+  });
+  /** Ubicación real de la visita (null si no trae coordenadas válidas). La limpia VisitaLimpiaService. */
+  readonly ubicacion = computed<UbicacionVisita | null>(() =>
+    this.visitaLimpiaService.ubicacion(this.visitaDetalle()),
+  );
+  /** Lo que se pinta en el mapa: la ubicación de la visita o, si no hay, Cali. */
+  readonly centroMapa = computed<UbicacionVisita>(() => this.ubicacion() ?? UBICACION_POR_DEFECTO);
 
   visualizacion: ModoVisualizacion = 'normal';
   readonly visualizaciones = ['Normal', 'Acordion', 'Horizontal'];
@@ -64,10 +92,17 @@ export class Gestion implements OnInit, OnDestroy {
 
   private readonly visitaService = inject(VisitaService);
   private readonly visitaLimpiaService = inject(VisitaLimpiaService);
+  private readonly formatoTextoService = inject(FormatoTextoService);
   private readonly route = inject(ActivatedRoute);
 
   idVisita: number | null = null;
-  mensajeError = '';
+  /** Signal: así Angular (zoneless) redibuja el aviso aunque se asigne desde una respuesta HTTP. */
+  readonly mensajeError = signal('');
+  /**
+   * Como `esModoObservacion` de SAUL (`accion === 'observar'`): se ve todo, no se guarda nada.
+   * Se activa con `/visita/gestionar/{id}?accion=observar`.
+   */
+  modoObservacion = false;
 
   private readonly versionCampo = new Map<string, number>();
   private readonly archivosPendientes = new Map<string, { file: File; vistaPrevia: string }>();
@@ -75,6 +110,8 @@ export class Gestion implements OnInit, OnDestroy {
   private readonly bloquesPorCampos = new WeakMap<VisitaCampo[], BloqueCampos[]>();
   private readonly sueltosPorCategoria = new WeakMap<VisitaCategoria, VisitaCampo[]>();
   private readonly bloquesPorCategoria = new WeakMap<VisitaCategoria, BloquePresentacion[]>();
+  private readonly encabezadosPorTabla = new WeakMap<VisitaTabla, string[]>();
+  private readonly columnaTituloPorTabla = new WeakMap<VisitaTabla, 'titulo' | null>();
   private readonly contextoPorCampo = new WeakMap<
     VisitaCampo,
     { campo: VisitaCampo; etiqueta: string; ocultarEtiqueta: boolean }
@@ -119,6 +156,7 @@ export class Gestion implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.modoObservacion = this.route.snapshot?.queryParamMap?.get('accion') === 'observar';
     this.route.paramMap.subscribe((params) => {
       const id = Number(params.get('idVisita'));
       if (!Number.isFinite(id) || id <= 0) {
@@ -138,12 +176,38 @@ export class Gestion implements OnInit, OnDestroy {
     this.liberarSelecciones();
     this.imagenesNoDisponibles.clear();
     this.idVisita = idVisita;
+    this.visitaDetalle.set(null);
     const formularioRaw = await firstValueFrom(this.visitaService.obtenerFormulario(idVisita));
-    const formulario = this.visitaLimpiaService.limpiar(formularioRaw, configuracionVisita);
+    const formulario = this.formatoTextoService.formatearFormulario(
+      this.visitaLimpiaService.limpiar(formularioRaw, configuracionVisita),
+    );
     console.log(formulario);
     this.dataForm.set(formulario);
     this.categoriaHorizontalIndice = 0;
     this.categoriaActivaId = this.categoriaMapaId;
+    // Después de generar el formulario, se consultan los datos guardados de la visita.
+    await this.consultarVisita(idVisita);
+  }
+
+  /**
+   * Consulta el detalle de la visita (GET /visita/{id}). Si falla, el formulario
+   * sigue visible y se avisa con `mensajeError`.
+   */
+  async consultarVisita(idVisita: number): Promise<void> {
+    try {
+      const visita = await firstValueFrom(this.visitaService.findById(idVisita));
+      // Si mientras tanto se abrió otra visita, esta respuesta ya no aplica.
+      if (this.idVisita === idVisita) {
+        this.visitaDetalle.set(visita);
+      }
+    } catch (error) {
+      console.error('No se pudo consultar la visita', error);
+      if (this.idVisita === idVisita) {
+        this.mensajeError.set(
+          'No se pudo consultar la información de la visita. Intente recargar la página.',
+        );
+      }
+    }
   }
 
   onVisualizacionChange(etiqueta: string): void {
@@ -212,11 +276,67 @@ export class Gestion implements OnInit, OnDestroy {
   }
 
   esInput(campo: VisitaCampo): boolean {
-    return campo.tipo !== 'select-one' && campo.tipo !== 'imagen';
+    return !this.esSelect(campo) && !this.esImagen(campo) && !this.esTextoLargo(campo);
+  }
+
+  /** Solo lectura del campo (API) o de toda la visita (modo observación). */
+  soloLectura(campo: VisitaCampo): boolean {
+    return campo.soloLectura || this.modoObservacion;
+  }
+
+  /** Input nativo según el tipo de SAUL: `fecha` → date, `hora` → time, `numero`/`decimal` → number. */
+  tipoInput(campo: VisitaCampo): 'text' | 'date' | 'time' | 'number' {
+    switch (campo.tipo) {
+      case 'fecha':
+        return 'date';
+      case 'hora':
+        return 'time';
+      case 'numero':
+      case 'decimal':
+        return 'number';
+      default:
+        return 'text';
+    }
+  }
+
+  /** Valor en el formato que entiende el input nativo ("2026-10-20", "14:30"). */
+  valorInput(campo: VisitaCampo): string {
+    if (campo.tipo === 'fecha') {
+      return fechaParaInput(campo.valor);
+    }
+    if (campo.tipo === 'hora') {
+      return horaParaInput(campo.valor);
+    }
+    return this.valorCampo(campo);
+  }
+
+  /** `hora` guarda al cambiar (ng-change en SAUL); los demás inputs guardan al perder el foco. */
+  alCambiarInput(campo: VisitaCampo, valor: string): void {
+    if (campo.tipo !== 'hora') {
+      return;
+    }
+    this.actualizarValor(campo, valor);
+    this.saveItem(campo);
+  }
+
+  alSalirInput(campo: VisitaCampo): void {
+    if (campo.tipo === 'hora') {
+      return;
+    }
+    this.saveItem(campo);
   }
 
   esImagen(campo: VisitaCampo): boolean {
     return campo.tipo === 'imagen';
+  }
+
+  esTextoLargo(campo: VisitaCampo): boolean {
+    return campo.tipo === 'texto-largo';
+  }
+
+  /** Ancho en la grilla, decidido solo por el tipo de campo. */
+  claseColumna(campo: VisitaCampo): string {
+    return this.esTextoLargo(campo) ? 'col-12' : 'col-12 col-md-6';
   }
 
   /** Orden de tablas y campos. Si la categoría no trae bloques, se arma uno estable. */
@@ -277,21 +397,18 @@ export class Gestion implements OnInit, OnDestroy {
     };
 
     for (let indice = 0; indice < campos.length; indice += 1) {
-      const imagen = campos[indice];
-      const descripcion = campos[indice + 1];
-      const numero = this.numeroRegistro(imagen.codigo, 'imagen_registro');
-      if (
-        imagen.tipo === 'imagen' &&
-        numero &&
-        descripcion &&
-        this.numeroRegistro(descripcion.codigo, 'descripcion_registro') === numero
-      ) {
-        pares.push({ imagen, descripcion });
-        indice += 1;
+      const campo = campos[indice];
+      if (this.esImagen(campo)) {
+        const siguiente = campos[indice + 1];
+        const descripcion = siguiente && !this.esImagen(siguiente) ? siguiente : null;
+        pares.push({ imagen: campo, descripcion });
+        if (descripcion) {
+          indice += 1;
+        }
         continue;
       }
       cerrarPares();
-      bloques.push({ id: imagen.id, filas: [], campos: [imagen] });
+      bloques.push({ id: campo.id, filas: [], campos: [campo] });
     }
     cerrarPares();
     this.bloquesPorCampos.set(campos, bloques);
@@ -310,30 +427,69 @@ export class Gestion implements OnInit, OnDestroy {
     return contexto;
   }
 
+  /**
+   * Imágenes en order-md-1/2 y descripciones en order-md-3/4. El orden del DOM
+   * (imagen A, descripción A, imagen B, descripción B) es el de móvil.
+   * Un registro solo conserva order-md-1/3; `salto` (order-md-2) baja su descripción bajo la imagen.
+   * Si A no tiene descripción, la de B se corre con offset-md-6 para quedar bajo su imagen.
+   */
   private celdasRegistro(izquierda: ParRegistro, derecha?: ParRegistro): CeldaRegistro[] {
-    const claseIzquierda = izquierda.descripcion.clase || 'col-md-6';
-    if (!derecha) {
-      return [
-        { campo: izquierda.imagen, clase: claseIzquierda, salto: false },
-        { campo: izquierda.descripcion, clase: claseIzquierda, salto: true },
-      ];
+    const clase = 'col-12 col-md-6';
+    const celdas: CeldaRegistro[] = [{ campo: izquierda.imagen, clase: `${clase} order-md-1`, salto: false }];
+    if (izquierda.descripcion) {
+      celdas.push({ campo: izquierda.descripcion, clase: `${clase} order-md-3`, salto: !derecha });
     }
-    const claseDerecha = derecha.descripcion.clase || 'col-md-6';
-    return [
-      { campo: izquierda.imagen, clase: `${claseIzquierda} order-md-1`, salto: false },
-      { campo: izquierda.descripcion, clase: `${claseIzquierda} order-md-3`, salto: false },
-      { campo: derecha.imagen, clase: `${claseDerecha} order-md-2`, salto: false },
-      { campo: derecha.descripcion, clase: `${claseDerecha} order-md-4`, salto: false },
-    ];
+    if (!derecha) {
+      return celdas;
+    }
+    celdas.push({ campo: derecha.imagen, clase: `${clase} order-md-2`, salto: false });
+    if (derecha.descripcion) {
+      const desplazamiento = izquierda.descripcion ? '' : ' offset-md-6';
+      celdas.push({ campo: derecha.descripcion, clase: `${clase} order-md-4${desplazamiento}`, salto: false });
+    }
+    return celdas;
+  }
+
+  /**
+   * `titulo`: la API reserva una columna para el título de la fila y alguna fila lo trae.
+   * Si la API no reserva esa columna, no se agrega ninguna (tampoco una de numeración "#").
+   */
+  columnaTitulo(tabla: VisitaTabla): 'titulo' | null {
+    const guardada = this.columnaTituloPorTabla.get(tabla);
+    if (guardada !== undefined) {
+      return guardada;
+    }
+    const columna =
+      tabla.tituloIndependiente && tabla.filas.some((fila) => this.normalizarTexto(fila.titulo).length > 0)
+        ? 'titulo'
+        : null;
+    this.columnaTituloPorTabla.set(tabla, columna);
+    return columna;
+  }
+
+  mostrarTitulo(tabla: VisitaTabla): boolean {
+    return this.columnaTitulo(tabla) !== null;
+  }
+
+  encabezadosVisibles(tabla: VisitaTabla): string[] {
+    const guardados = this.encabezadosPorTabla.get(tabla);
+    if (guardados) {
+      return guardados;
+    }
+    let encabezados = tabla.encabezados;
+    if (tabla.tituloIndependiente && !this.mostrarTitulo(tabla)) {
+      encabezados = tabla.encabezados.slice(1);
+    }
+    this.encabezadosPorTabla.set(tabla, encabezados);
+    return encabezados;
+  }
+
+  esTablaCompacta(tabla: VisitaTabla): boolean {
+    return this.encabezadosVisibles(tabla).length <= 4;
   }
 
   nombreArchivo(campo: VisitaCampo): string {
     return this.archivoPendiente(campo.codigo)?.name || this.referenciaGuardada(campo) || 'Ningún archivo seleccionado';
-  }
-
-  private numeroRegistro(codigo: string, prefijo: 'imagen_registro' | 'descripcion_registro'): string | null {
-    const coincidencia = codigo.match(new RegExp(`${prefijo}(\\d+)$`));
-    return coincidencia?.[1] ?? null;
   }
 
   archivoPendiente(codigo: string): File | null {
@@ -369,21 +525,21 @@ export class Gestion implements OnInit, OnDestroy {
     const input = event.target as HTMLInputElement;
     const archivo = input.files?.[0];
     input.value = '';
-    if (!archivo || campo.soloLectura || this.idVisita === null) {
+    if (!archivo || this.soloLectura(campo) || this.idVisita === null) {
       return;
     }
 
     const partes = archivo.name.split('.');
     const extension = partes.length > 1 ? (partes.pop()?.toLowerCase() ?? '') : '';
     if (this.extensionesImagen.indexOf(extension) === -1) {
-      this.mensajeError = 'Solo se permiten archivos con extensión PNG, JPEG o JPG.';
+      this.mensajeError.set('Solo se permiten archivos con extensión PNG, JPEG o JPG.');
       return;
     }
 
     this.liberarSeleccion(campo.codigo);
     const vistaPrevia = URL.createObjectURL(archivo);
     this.archivosPendientes.set(campo.codigo, { file: archivo, vistaPrevia });
-    this.mensajeError = '';
+    this.mensajeError.set('');
     this.saveItem(campo);
   }
 
@@ -463,14 +619,15 @@ export class Gestion implements OnInit, OnDestroy {
   }
 
   actualizarValor(campo: VisitaCampo, texto: string): void {
-    if (campo.soloLectura) {
+    if (this.soloLectura(campo)) {
       return;
     }
     campo.valor = this.valorDesdeTexto(campo.valor, texto);
   }
 
   saveItem(campo: VisitaCampo | undefined): void {
-    if (campo === undefined || campo.soloLectura || this.idVisita === null) {
+    // Igual que SAUL: en modo observación no se guarda nada (bloquearModoObservacion).
+    if (campo === undefined || this.soloLectura(campo) || this.idVisita === null) {
       return;
     }
 
@@ -479,14 +636,9 @@ export class Gestion implements OnInit, OnDestroy {
     let archivo: File | null = null;
 
     if (campo.tipo === 'hora') {
-      valorEnviado = this.formatearInstante(campo.valor, { timeZone: 'America/Bogota' });
+      valorEnviado = horaParaSaul(campo.valor);
     } else if (campo.tipo === 'fecha') {
-      valorEnviado = this.formatearInstante(campo.valor, {
-        timeZone: 'America/Bogota',
-        year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
-      });
+      valorEnviado = fechaParaSaul(campo.valor);
     } else if (campo.tipo === 'imagen') {
       archivo = this.archivoPendiente(campo.codigo);
       if (!archivo) {
@@ -495,7 +647,7 @@ export class Gestion implements OnInit, OnDestroy {
       const partes = archivo.name.split('.');
       const extension = partes.length > 1 ? (partes.pop()?.toLowerCase() ?? '') : '';
       if (this.extensionesImagen.indexOf(extension) === -1) {
-        this.mensajeError = 'Solo se permiten archivos con extensión PNG, JPEG o JPG.';
+        this.mensajeError.set('Solo se permiten archivos con extensión PNG, JPEG o JPG.');
         return;
       }
       if (this.archivoEnviado.get(campo.codigo) === archivo) {
@@ -506,7 +658,7 @@ export class Gestion implements OnInit, OnDestroy {
 
     const version = (this.versionCampo.get(campo.codigo) ?? 0) + 1;
     this.versionCampo.set(campo.codigo, version);
-    this.mensajeError = '';
+    this.mensajeError.set('');
 
     const peticion = archivo
       ? this.visitaService.guardarImagen(idVisita, campo, archivo)
@@ -519,8 +671,9 @@ export class Gestion implements OnInit, OnDestroy {
         }
         if (!respuesta?.success || respuesta.success !== true) {
           this.archivoEnviado.delete(campo.codigo);
-          this.mensajeError =
-            'Ha ocurrido un error en response informe al desarrollador. Gracias. ' + (respuesta?.msg ?? '');
+          this.mensajeError.set(
+            'Ha ocurrido un error en response informe al desarrollador. Gracias. ' + (respuesta?.msg ?? ''),
+          );
           return;
         }
         if (respuesta.value && respuesta.value !== '') {
@@ -536,23 +689,9 @@ export class Gestion implements OnInit, OnDestroy {
           return;
         }
         this.archivoEnviado.delete(campo.codigo);
-        this.mensajeError = '2Ha ocurrido un error informe al desarrollador. Gracias.';
+        this.mensajeError.set('2Ha ocurrido un error informe al desarrollador. Gracias.');
       },
     });
-  }
-
-  private formatearInstante(
-    valor: string | number | boolean | null,
-    options: Intl.DateTimeFormatOptions,
-  ): string | number | boolean | null {
-    if (valor === null || valor === '' || typeof valor === 'boolean') {
-      return valor;
-    }
-    const dateObject = new Date(valor);
-    if (Number.isNaN(dateObject.getTime())) {
-      return valor;
-    }
-    return dateObject.toLocaleString('en-US', options);
   }
 
   private actualizarPorAtributo(codigo: string, nuevoValor: string): void {

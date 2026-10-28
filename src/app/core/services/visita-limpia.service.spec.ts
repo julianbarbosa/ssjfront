@@ -1,4 +1,4 @@
-import { VisitaCampo, VisitaFormularioCategoriaRaw } from '../interfaces/visita.interface';
+import { VisitaCampo, VisitaDetalle, VisitaFormularioCategoriaRaw } from '../interfaces/visita.interface';
 import { cuerpoImagenVisita } from './visita.service';
 import { configuracionVisita } from '../../features/visita/gestion/configuracion-visita';
 import { serializarValorVisita, VisitaLimpiaService } from './visita-limpia.service';
@@ -23,7 +23,7 @@ function campo(
 describe('VisitaLimpiaService', () => {
   const servicio = new VisitaLimpiaService();
 
-  it('no arma tabla si no hay encabezados y conserva cada campo', () => {
+  it('arma tabla por estructura sin encabezados ni configuración y conserva cada campo', () => {
     const categorias = servicio.limpiar([
       {
         idCategoriaItem: 8,
@@ -73,7 +73,14 @@ describe('VisitaLimpiaService', () => {
       },
     ]);
 
-    expect(categorias[0].tabla).toBeNull();
+    const tabla = categorias[0].tabla;
+    expect(tabla?.encabezados).toEqual(['Ítem', '', '']);
+    expect(tabla?.tituloIndependiente).toBe(true);
+    expect(tabla?.filas.map((fila) => fila.titulo)).toEqual([
+      'Vía de acceso al predio',
+      'Número de unidades de vivienda y/o locales',
+    ]);
+    expect(tabla?.filas.flatMap((fila) => fila.celdas)).toEqual(categorias[0].campos);
     expect(categorias[0].campos.map((item) => [item.codigo, item.valor, item.nombre])).toEqual([
       ['v6_via_acceso_verificado_en_obra', 0, 'Vía de acceso al predio'],
       ['v6_via_acceso_aprobado_en_planos', '', 'Vía de acceso al predio'],
@@ -324,7 +331,8 @@ describe('VisitaLimpiaService', () => {
     expect(configurada.bloques?.[1].campos.map((item) => item.codigo)).toEqual(['c10']);
     expect(deApi.tabla?.encabezados).toEqual(['Concepto', 'Uno', 'Dos']);
     expect(deApi.tabla?.filas[0].titulo).toBe('Fila C');
-    expect(sinConfiguracion.bloques?.every((bloque) => bloque.tabla === null)).toBe(true);
+    expect(sinConfiguracion.tabla?.encabezados).toEqual(['Ítem', '', '']);
+    expect(sinConfiguracion.tabla?.filas[0].celdas.map((celda) => celda?.codigo)).toEqual(['c40', 'c41']);
     expect(sinConfiguracion.campos).toHaveLength(2);
   });
 
@@ -356,13 +364,12 @@ describe('VisitaLimpiaService', () => {
     expect(tabla?.filas[0].celdas.map((celda) => celda?.codigo)).toEqual(['a1', 'a2']);
   });
 
-  it('arma la tabla de DATOS DE LA VALLA con la configuración de la pantalla y solo en esa categoría', () => {
-    const valla = (idCategoriaItem: number) => ({
-      idCategoriaItem,
+  it('arma la tabla de DATOS DE LA VALLA por estructura aunque la descripción sea el nombre de la categoría', () => {
+    const valla = (posicion: number, descripcion: string) => ({
+      idCategoriaItem: 56,
       nombre: 'DATOS DE LA VALLA',
-      descripcion: 'DATOS DE LA VALLA',
-      arrayDescripcion: ['DATOS DE LA VALLA'],
-      posicion: idCategoriaItem,
+      descripcion,
+      posicion,
       arrayItems: [
         {
           item: {
@@ -398,26 +405,124 @@ describe('VisitaLimpiaService', () => {
       ],
     });
 
-    const [categoria, otra] = servicio.limpiar([valla(56), valla(99)], configuracionVisita);
+    const [deApi, comoLlega] = servicio.limpiar(
+      [valla(1, 'Ítem,Aprobado en planos,Verificado en obra'), valla(2, 'DATOS DE LA VALLA')],
+      configuracionVisita,
+    );
+    const [sinConfiguracion] = servicio.limpiar([valla(3, 'DATOS DE LA VALLA')]);
+
+    for (const categoria of [deApi, comoLlega, sinConfiguracion]) {
+      const bloques = categoria.bloques ?? [];
+      expect(bloques.map((bloque) => (bloque.tabla ? 'tabla' : 'campos'))).toEqual(['tabla', 'campos', 'tabla']);
+      expect(bloques[0].tabla?.tituloIndependiente).toBe(true);
+      expect(bloques[0].tabla?.filas.map((fila) => fila.titulo)).toEqual(['CESIÓN DE VÍAS']);
+      expect(bloques[0].tabla?.filas[0].celdas.map((celda) => [celda?.codigo, celda?.valor])).toEqual([
+        ['v6_cesion_vias_licencia', '120.5'],
+        ['v6_cesion_vias_verificacion', 0],
+      ]);
+      expect(bloques[1].campos.map((item) => [item.codigo, item.valor])).toEqual([['v15_funcionario_visitador', '']]);
+      expect(bloques[2].tabla?.filas[0].celdas.map((celda) => [celda?.codigo, celda?.valor])).toEqual([
+        ['v6_red_gas_licencia', 'si'],
+        ['v6_red_gas_verificacion', null],
+      ]);
+      expect(bloques[2].tabla?.filas[0].celdas[1]).toBe(categoria.campos[4]);
+      expect(categoria.campos).toHaveLength(5);
+    }
+
+    const encabezados = (categoria: typeof deApi) =>
+      (categoria.bloques ?? []).filter((bloque) => bloque.tabla).map((bloque) => bloque.tabla?.encabezados);
+    expect(encabezados(deApi)).toEqual([
+      ['Ítem', 'Aprobado en planos', 'Verificado en obra'],
+      ['Ítem', 'Aprobado en planos', 'Verificado en obra'],
+    ]);
+    expect(encabezados(comoLlega)).toEqual([
+      ['Ítem', 'Aprobado en planos', 'Verificado en obra'],
+      ['Ítem', 'Aprobado en planos', 'Verificado en obra'],
+    ]);
+    expect(encabezados(sinConfiguracion)).toEqual([
+      ['Ítem', '', ''],
+      ['Ítem', '', ''],
+    ]);
+  });
+
+  it('convierte en tabla otra categoría con grupos de tres campos iguales al grupo, sin configuración', () => {
+    const grupo = (nombre: string, id: number, nombres = [nombre, nombre.toUpperCase(), ` ${nombre} `]) => ({
+      item: {
+        nombre,
+        items: nombres.map((nombreCampo, i) =>
+          campo({ idItemVisita: id + i, codigo: `m${id + i}`, nombre: nombreCampo, valor: i }),
+        ),
+      },
+    });
+    const [categoria] = servicio.limpiar([
+      {
+        idCategoriaItem: 900,
+        nombre: 'Materiales',
+        descripcion: 'Materiales',
+        posicion: 1,
+        arrayItems: [
+          grupo('Cemento', 1),
+          grupo('Arena fina', 10, ['Arena fina', 'ARENA FINA', 'Arena  fina']),
+          grupo('Grava', 20, ['Grava', 'Grava', 'Peso']),
+          grupo('Acero', 30, ['Acero', '', 'ACERO']),
+          grupo('Ladrillo', 40, ['Ladrillo', 'Ladrillo']),
+        ],
+      },
+    ]);
+
     const bloques = categoria.bloques ?? [];
-
-    expect(bloques.map((bloque) => (bloque.tabla ? 'tabla' : 'campos'))).toEqual(['tabla', 'campos', 'tabla']);
-    expect(bloques[0].tabla?.encabezados).toEqual(['Ítem', 'Aprobado en planos', 'Verificado en obra']);
-    expect(bloques[0].tabla?.filas.map((fila) => fila.titulo)).toEqual(['CESIÓN DE VÍAS']);
-    expect(bloques[0].tabla?.filas[0].celdas.map((celda) => [celda?.codigo, celda?.valor])).toEqual([
-      ['v6_cesion_vias_licencia', '120.5'],
-      ['v6_cesion_vias_verificacion', 0],
+    expect(bloques.map((bloque) => (bloque.tabla ? 'tabla' : 'campos'))).toEqual([
+      'tabla',
+      'campos',
+      'tabla',
+      'tabla',
     ]);
-    expect(bloques[1].campos.map((item) => [item.codigo, item.valor])).toEqual([['v15_funcionario_visitador', '']]);
-    expect(bloques[2].tabla?.filas[0].celdas.map((celda) => [celda?.codigo, celda?.valor])).toEqual([
-      ['v6_red_gas_licencia', 'si'],
-      ['v6_red_gas_verificacion', null],
+    expect(bloques[0].tabla?.encabezados).toEqual(['Ítem', '', '', '']);
+    expect(bloques[0].tabla?.filas.map((fila) => fila.titulo)).toEqual(['Cemento', 'Arena fina']);
+    expect(bloques[0].tabla?.filas[1].celdas.map((celda) => celda?.codigo)).toEqual(['m10', 'm11', 'm12']);
+    expect(bloques[1].campos.map((item) => item.codigo)).toEqual(['m20', 'm21', 'm22']);
+    expect(bloques[2].tabla?.filas.map((fila) => fila.titulo)).toEqual(['Acero']);
+    expect(bloques[3].tabla?.encabezados).toEqual(['Ítem', '', '']);
+    expect(bloques[3].tabla?.filas.map((fila) => fila.titulo)).toEqual(['Ladrillo']);
+    const pintados = bloques.flatMap((bloque) => [
+      ...(bloque.tabla?.filas.flatMap((fila) => fila.celdas) ?? []),
+      ...bloque.campos,
     ]);
-    expect(bloques[2].tabla?.filas[0].celdas[1]).toBe(categoria.campos[3]);
-    expect(categoria.campos).toHaveLength(5);
+    expect(pintados).toEqual(categoria.campos);
+    expect(new Set(pintados).size).toBe(14);
+  });
 
-    expect(otra.bloques?.every((bloque) => bloque.tabla === null)).toBe(true);
-    expect(otra.bloques?.flatMap((bloque) => bloque.campos)).toEqual(otra.campos);
+  it('toma los encabezados de la etiqueta propia de cada columna cuando es igual en todas las filas', () => {
+    const grupo = (nombre: string, id: number, etiquetas: (string | null)[]) => ({
+      item: {
+        nombre,
+        items: etiquetas.map((label, i) =>
+          campo({ idItemVisita: id + i, codigo: `e${id + i}`, nombre, parametros: label ? { label } : null }),
+        ),
+      },
+    });
+    const [consistente, inconsistente] = servicio.limpiar(
+      [
+        {
+          idCategoriaItem: 901,
+          nombre: 'Redes',
+          descripcion: 'Redes',
+          posicion: 1,
+          arrayItems: [grupo('Acueducto', 1, ['Exigido', 'Verificado']), grupo('Gas', 10, ['EXIGIDO', 'verificado'])],
+        },
+        {
+          idCategoriaItem: 902,
+          nombre: 'Redes mezcladas',
+          descripcion: 'Redes mezcladas',
+          posicion: 2,
+          arrayItems: [grupo('Acueducto', 20, ['Exigido', 'Verificado']), grupo('Gas', 30, ['Otro', null])],
+        },
+      ],
+      { encabezadosPorCategoria: { 901: ['No', 'se', 'usa'], 902: ['Ítem', 'Uno', 'Dos'] } },
+    );
+
+    expect(consistente.tabla?.encabezados).toEqual(['Ítem', 'Exigido', 'Verificado']);
+    expect(inconsistente.tabla?.encabezados).toEqual(['Ítem', 'Uno', 'Dos']);
   });
 
   it('conserva registros con el mismo código y valores distintos', () => {
@@ -442,7 +547,7 @@ describe('VisitaLimpiaService', () => {
       },
     ]);
 
-    expect(categorias[0].tabla).toBeNull();
+    expect(categorias[0].tabla?.filas[0].celdas).toEqual(categorias[0].campos);
     expect(categorias[0].campos.map((item) => [item.id, item.codigo, item.valor])).toEqual([
       [20, 'ancho', 1],
       [21, 'ancho', 2],
@@ -697,3 +802,33 @@ function formularioConDireccion(datos: {
     },
   ];
 }
+
+describe('VisitaLimpiaService.ubicacion', () => {
+  const servicio = new VisitaLimpiaService();
+  const visita = (latitud: string | null | undefined, longitud: string | null | undefined): VisitaDetalle => ({
+    idVisita: 1,
+    latitud,
+    longitud,
+  });
+
+  it('convierte las coordenadas de texto de SAUL a números', () => {
+    expect(servicio.ubicacion(visita('3.4372', '-76.5225'))).toEqual({ latitud: 3.4372, longitud: -76.5225 });
+  });
+
+  it('acepta coma decimal y espacios', () => {
+    expect(servicio.ubicacion(visita(' 3,4372 ', '-76,5225'))).toEqual({ latitud: 3.4372, longitud: -76.5225 });
+  });
+
+  it.each([
+    ['sin visita', null],
+    ['latitud vacía', visita('', '-76.5225')],
+    ['longitud null', visita('3.4372', null)],
+    ['sin campos', visita(undefined, undefined)],
+    ['texto que no es número', visita('abc', '-76.5225')],
+    ['latitud fuera de rango', visita('120', '-76.5225')],
+    ['longitud fuera de rango', visita('3.4372', '-200')],
+    ['0,0 (valor vacío típico)', visita('0', '0')],
+  ])('devuelve null: %s', (_caso, entrada) => {
+    expect(servicio.ubicacion(entrada)).toBeNull();
+  });
+});
