@@ -14,8 +14,13 @@ const visitaApi = {
   llamadas: [] as string[],
   /** true: findById responde con error. */
   fallaDetalle: false,
+  /** true: generar (obtenerFormulario) responde con error, como pasa en algunas visitas. */
+  fallaFormulario: false,
   obtenerFormulario: (idVisita: number) => {
     visitaApi.llamadas.push(`generar ${idVisita}`);
+    if (visitaApi.fallaFormulario) {
+      return throwError(() => new Error('500'));
+    }
     return of([]);
   },
   findById: (idVisita: number) => {
@@ -60,6 +65,7 @@ describe('Gestion', () => {
     visitaApi.imagenes = 0;
     visitaApi.llamadas = [];
     visitaApi.fallaDetalle = false;
+    visitaApi.fallaFormulario = false;
     await TestBed.configureTestingModule({
       imports: [Gestion],
       providers: [
@@ -93,6 +99,28 @@ describe('Gestion', () => {
     expect(visitaApi.llamadas).toEqual(['generar 3931', 'findById 3931']);
     expect(component.visitaDetalle()?.idVisita).toBe(3931);
     expect(component.visitaDetalle()?.latitud).toBe('3.4372');
+  });
+
+  it('si generar falla, igual consulta la visita, muestra el encabezado y avisa', async () => {
+    visitaApi.fallaFormulario = true;
+    visitaApi.llamadas = [];
+    const otro = TestBed.createComponent(Gestion);
+    otro.detectChanges();
+    // Sin whenStable: esperaría también la carga del mapa ArcGIS (varios segundos).
+    // Basta con dejar terminar la cadena generar (falla) → findById.
+    await new Promise((resolver) => setTimeout(resolver));
+    otro.detectChanges();
+
+    expect(visitaApi.llamadas).toEqual(['generar 3931', 'findById 3931']);
+    expect(otro.componentInstance.dataForm()).toEqual([]);
+    expect(otro.componentInstance.encabezado()?.consecutivo).toBe(3931);
+    expect(otro.componentInstance.mensajeError()).toBe(
+      'No se pudo cargar el formulario de la visita. Intente recargar la página.',
+    );
+    const raiz: HTMLElement = otro.nativeElement;
+    expect(raiz.querySelector('.gestion-encabezado h1')?.textContent?.trim()).toBe('Registro de Visita');
+    expect(raiz.querySelector('.gestion-error')?.textContent).toContain('No se pudo cargar el formulario');
+    otro.destroy();
   });
 
   it('centra el mapa en la ubicación de la visita consultada', () => {

@@ -99,11 +99,18 @@ function nombrePersona(persona: PersonaSaulRaw | null | undefined): string {
     .join(' ');
 }
 
-function textoOVacio(texto: string | null | undefined): string {
-  return (texto ?? '').trim();
+/**
+ * Acepta cualquier valor: SAUL a veces manda números u otros tipos donde se espera texto,
+ * y `.trim()` sobre un número rompería el encabezado de esa visita.
+ */
+function textoOVacio(texto: unknown): string {
+  if (texto === null || texto === undefined || typeof texto === 'object') {
+    return '';
+  }
+  return String(texto).trim();
 }
 
-function textoONull(texto: string | null | undefined): string | null {
+function textoONull(texto: unknown): string | null {
   return textoOVacio(texto) || null;
 }
 

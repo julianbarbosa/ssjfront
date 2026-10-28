@@ -177,15 +177,24 @@ export class Gestion implements OnInit, OnDestroy {
     this.imagenesNoDisponibles.clear();
     this.idVisita = idVisita;
     this.visitaDetalle.set(null);
-    const formularioRaw = await firstValueFrom(this.visitaService.obtenerFormulario(idVisita));
-    const formulario = this.formatoTextoService.formatearFormulario(
-      this.visitaLimpiaService.limpiar(formularioRaw, configuracionVisita),
-    );
-    console.log(formulario);
-    this.dataForm.set(formulario);
+    this.mensajeError.set('');
+    try {
+      const formularioRaw = await firstValueFrom(this.visitaService.obtenerFormulario(idVisita));
+      const formulario = this.formatoTextoService.formatearFormulario(
+        this.visitaLimpiaService.limpiar(formularioRaw, configuracionVisita),
+      );
+      this.dataForm.set(formulario);
+    } catch (error) {
+      // Antes, este error cortaba el método y nunca se consultaba el encabezado.
+      console.error('No se pudo generar el formulario de la visita', error);
+      if (this.idVisita === idVisita) {
+        this.dataForm.set([]);
+        this.mensajeError.set('No se pudo cargar el formulario de la visita. Intente recargar la página.');
+      }
+    }
     this.categoriaHorizontalIndice = 0;
     this.categoriaActivaId = this.categoriaMapaId;
-    // Después de generar el formulario, se consultan los datos guardados de la visita.
+    // Después de generar (haya salido bien o no), se consultan los datos de la visita.
     await this.consultarVisita(idVisita);
   }
 
@@ -202,7 +211,8 @@ export class Gestion implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error('No se pudo consultar la visita', error);
-      if (this.idVisita === idVisita) {
+      // Si ya hay un aviso (por ejemplo, del formulario), no se reemplaza.
+      if (this.idVisita === idVisita && !this.mensajeError()) {
         this.mensajeError.set(
           'No se pudo consultar la información de la visita. Intente recargar la página.',
         );
