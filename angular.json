@@ -7,7 +7,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "ssj-front": {
+    "gestion-front": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -96,10 +96,10 @@
           },
           "configurations": {
             "production": {
-              "buildTarget": "ssj-front:build:production"
+              "buildTarget": "gestion-front:build:production"
             },
             "development": {
-              "buildTarget": "ssj-front:build:development"
+              "buildTarget": "gestion-front:build:development"
             }
           },
           "defaultConfiguration": "development"
